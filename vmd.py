@@ -49,23 +49,29 @@ import logging
 #     return cap
 
 class VMD:
-    def __init__(self, video_stabilization_obj,foreground_estimation_obj,binary_frame_creator_obj,bbox_creator_obj,logger=None):
+    def __init__(self, video_stabilization_obj,foreground_estimation_obj,binary_frame_creator_obj,bbox_creator_obj,is_rgb=False):
         
         logging.basicConfig(level=logging.DEBUG)
         self.video_stabilization_obj = video_stabilization_obj
         self.foreground_estimation_obj = foreground_estimation_obj
         self.binary_frame_creator_obj = binary_frame_creator_obj
         self.bbox_creator_obj = bbox_creator_obj
-        self.logger = logger
-        self.logger_counter = 0
-    
+        self.is_rgb = is_rgb        
+        self.frame_counter = 0
+
     def __call__(self,frame):
+        if not self.is_rgb: # gray or thermal
+            frame = frame[:,:,0]
+        
+        else:
+            frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        
         stabilized_frame = self.video_stabilization_obj(frame)
         foreground_estimation = self.foreground_estimation_obj(stabilized_frame)
         binary_foreground_estimation = self.binary_frame_creator_obj(foreground_estimation)
         frame_bboxes = self.bbox_creator_obj(binary_foreground_estimation)
-        logging.debug(f'frame number {self.logger_counter}')
-        self.logger_counter +=1
+        logging.debug(f'frame number {self.frame_counter}')
+        self.frame_counter +=1
         return frame_bboxes
     
 

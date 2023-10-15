@@ -14,18 +14,16 @@ class OpticalFlowStabilization:
         self.previous_singel_channel_frame = None
 
 
-    def __call__(self, frame):
-        if len(frame.shape) == 3: # i.e a rgb frame
-            singel_channel_frame = cv.cvtColor(frame,cv.COLOR_BGR2GRAY)
-        
-        else: # 1 channel frame
-            singel_channel_frame = frame
+    def __call__(self, singel_channel_frame):
 
         rotation_mat = self.get_rotation_mat(frame=singel_channel_frame)
         if rotation_mat is not None:
-            return self.rotate_frame(frame,rotation_mat)
+            rotated_frame = self.rotate_frame(singel_channel_frame,rotation_mat)
+        
+        else:
+            rotated_frame = singel_channel_frame
 
-        return frame
+        return rotated_frame
 
     def get_rotation_mat(self,frame):
         # Assumes that the frame consists onlu of 1 channel i.e (w,h)

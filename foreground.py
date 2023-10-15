@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 as cv
 
+
 foreground_estimators = {}
 
 def register(cls):
@@ -12,15 +13,13 @@ class MedianForegroundEstimation:
         self.frames_history = []
         self.num_frames = num_frames
     def __call__(self,frame):
-        gray_frame = cv.cvtColor(frame,cv.COLOR_BGR2GRAY)
 
         if len(self.frames_history) == 0:
-            foreground = gray_frame
+            foreground = frame
 
         else:
-            color_background = np.median(self.frames_history, axis=0).astype(dtype=np.uint8)
-            gray_background = cv.cvtColor(color_background, cv.COLOR_BGR2GRAY)
-            foreground = cv.absdiff(gray_frame, gray_background)
+            background = np.median(self.frames_history, axis=0).astype(dtype=np.uint8)
+            foreground = cv.absdiff(frame, background)
 
             if len(self.frames_history)>=self.num_frames:
                 self.frames_history = list(self.frames_history[-self.num_frames+1:])
@@ -34,18 +33,18 @@ class MOG2():
         self.fgbg = cv.createBackgroundSubtractorMOG2(**kwargs)
     
     def __call__(self, frame):
-        gray_frame = cv.cvtColor(frame,cv.COLOR_BGR2GRAY)
-        fgmask = self.fgbg.apply(gray_frame)
-        cv.imshow('fgmask', fgmask) 
-
+        fgmask = self.fgbg.apply(frame)
         return fgmask
 
 
 @register
 class PESMODForegroundEstimation():
-    def __init__(self) -> None:
-        pass
+    def __init__(self,neighborhood_size:tuple = (3,3)) -> None:
+        self.neighborhood_size = neighborhood_size
+        self.frames_history = None
     
+    def __call__(self, frame):
+        pass
 
 
 
