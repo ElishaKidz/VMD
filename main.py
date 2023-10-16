@@ -39,7 +39,7 @@ if __name__ == '__main__':
     parser.add_argument('--config_path',type=str,default=Path('configs/default.yaml'))
     parser.add_argument('--bbox_save_path',type=str,default=Path('outputs/bboxes/result.csv'))
     parser.add_argument('--rendered_video_save_path',type=str,default=Path('outputs/videos/result.mp4'))
-    parser.add_argument('--frame_limit',type=int,default=500)
+    parser.add_argument('--frame_limit',type=int,default=100)
     parser.add_argument('--rgb',action='store_true')
 
     args = parser.parse_args()
