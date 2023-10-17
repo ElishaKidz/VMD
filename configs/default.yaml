@@ -1,0 +1,30 @@
+stabilizer:
+  stabilizer_name: 'OpticalFlowStabilization'
+  stabilizer_params:
+    key_point_kwargs:
+      maxCorners: 10
+      qualityLevel: 0.01
+      minDistance: 30
+      
+    optical_flow_kwargs:
+      nextPts: 
+
+  
+binarizer:
+  binarizer_name: 'DilateErodeBinarizer'
+  binarizer_params:
+    dilate_kwargs:
+      iterations: 1
+
+    erode_kwargs:
+      iterations: 1
+
+
+detector:
+  detector_name: 'DetectionsFromContours'
+    
+
+foreground_estimator:
+  foreground_estimator_name: 'PESMODForegroundEstimation'
+
+
