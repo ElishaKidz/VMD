@@ -1,7 +1,7 @@
 import numpy as np
 import cv2 as cv
 from utils import cell_neighbors
-
+from skimage.util import view_as_windows
 foreground_estimators = {}
 
 def register(cls):
@@ -39,8 +39,8 @@ class MOG2():
 
 @register
 class PESMODForegroundEstimation():
-    def __init__(self,neighborhood_size:tuple = 1) -> None:
-        self.neighborhood_size = neighborhood_size
+    def __init__(self,neighborhood_matrix:tuple = (3,3)) -> None:
+        self.neighborhood_matrix = neighborhood_matrix
         self.frames_history = None
     
     def __call__(self, frame):
@@ -49,17 +49,19 @@ class PESMODForegroundEstimation():
             return frame
         
         else:
-            background = np.mean(self.frames_history,axis=0)
-            foreground = np.zeros(background.shape,dtype=np.uint8)
-            for row in range(frame.shape[0]):
-                for col in range(frame.shape[1]):
-                    pixel_value = frame[row][col]
-                    pixel_nighborhood_background_values = cell_neighbors(background,row,col,self.neighborhood_size)
-                    min_distance_of_pixel_to_nighborhood_background = np.min(np.absolute(pixel_value-pixel_nighborhood_background_values))
-                    foreground[row,col] = min_distance_of_pixel_to_nighborhood_background
-            
-            self.frames_history = np.append(self.frames_history,np.expand_dims(frame,axis=0),axis=0)
+
+            filter_w, filter_h = self.neighborhood_matrix
+            pad_w = int(filter_w / 2)
+            pad_h = int(filter_h / 2)
+
+            background = np.mean(self.frames_history, axis=0)
+            padded_background = np.pad(background, ((pad_w, pad_w), (pad_h, pad_h)), constant_values=(np.inf, np.inf))
+            background_patches = view_as_windows(padded_background, self.neighborhood_matrix)
+
+            w, h = frame.shape
+            foreground = np.abs(background_patches.reshape(-1) - np.repeat(frame, filter_w * filter_h)).reshape(w, h, -1).min(axis=2).astype(np.uint8)
+
+            self.frames_history = np.append(self.frames_history,np.expand_dims(frame, axis=0), axis=0)
             return foreground
-    
 
 
