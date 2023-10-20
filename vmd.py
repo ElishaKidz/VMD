@@ -49,23 +49,19 @@ import logging
 #     return cap
 
 class VMD:
-    def __init__(self, video_stabilization_obj,foreground_estimation_obj,binary_frame_creator_obj,bbox_creator_obj,is_rgb=False):
+    def __init__(self, video_stabilization_obj,foreground_estimation_obj,binary_frame_creator_obj,bbox_creator_obj):
         
         logging.basicConfig(level=logging.DEBUG)
         self.video_stabilization_obj = video_stabilization_obj
         self.foreground_estimation_obj = foreground_estimation_obj
         self.binary_frame_creator_obj = binary_frame_creator_obj
         self.bbox_creator_obj = bbox_creator_obj
-        self.is_rgb = is_rgb        
         self.frame_counter = 0
 
     def __call__(self,frame):
-        if not self.is_rgb: # gray or thermal
-            frame = frame[:,:,0]
-        
-        else:
-            frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        
+        # the cv2 caption reads all frames defaultly as bgr therefore they are converted to gray.
+        frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+
         stabilized_frame = self.video_stabilization_obj(frame)
         foreground_estimation = self.foreground_estimation_obj(stabilized_frame)
         binary_foreground_estimation = self.binary_frame_creator_obj(foreground_estimation)

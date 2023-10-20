@@ -39,8 +39,7 @@ if __name__ == '__main__':
     parser.add_argument('--config_path',type=str,default=Path('configs/default.yaml'))
     parser.add_argument('--bbox_save_path',type=str,default=Path('outputs/bboxes/result.csv'))
     parser.add_argument('--rendered_video_save_path',type=str,default=Path('outputs/videos/result.mp4'))
-    parser.add_argument('--frame_limit',type=int,default=100)
-    parser.add_argument('--rgb',action='store_true')
+    parser.add_argument('--frame_limit',type=int,default=500)
 
     args = parser.parse_args()
     
@@ -51,7 +50,7 @@ if __name__ == '__main__':
     binarizer = binarizers[vmd_params['binarizer']['binarizer_name']](**vmd_params['binarizer'].get('binarizer_params',{}))
     detector = detectors[vmd_params['detector']['detector_name']](**vmd_params['detector'].get('detector_params',{}))
     foreground_estimator = foreground_estimators[vmd_params['foreground_estimator']['foreground_estimator_name']](**vmd_params['foreground_estimator'].get('foreground_estimator_params',{}))
-    vmd = VMD(stabilizer,foreground_estimator,binarizer,detector,args.rgb)
+    vmd = VMD(stabilizer,foreground_estimator,binarizer,detector)
     main(vmd,video_cap,args.bbox_save_path,args.rendered_video_save_path,args.frame_limit)
 
 

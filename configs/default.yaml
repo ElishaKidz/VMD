@@ -1,6 +1,7 @@
 stabilizer:
   stabilizer_name: 'OpticalFlowStabilization'
   stabilizer_params:
+    rotation_matrix_buffer_size: 50
     key_point_kwargs:
       maxCorners: 10
       qualityLevel: 0.01
@@ -26,5 +27,7 @@ detector:
 
 foreground_estimator:
   foreground_estimator_name: 'PESMODForegroundEstimation'
+  foreground_estimator_params:
+    num_frames: 100
 
 

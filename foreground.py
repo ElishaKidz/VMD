@@ -22,7 +22,7 @@ class MedianForegroundEstimation:
             foreground = cv.absdiff(frame, background)
 
             if len(self.frames_history)>=self.num_frames:
-                self.frames_history = list(self.frames_history[-self.num_frames+1:])
+                self.frames_history = list(self.frames_history[-self.num_frames:])
 
         self.frames_history.append(frame)
         return foreground
@@ -39,9 +39,10 @@ class MOG2():
 
 @register
 class PESMODForegroundEstimation():
-    def __init__(self,neighborhood_matrix:tuple = (3,3)) -> None:
+    def __init__(self,neighborhood_matrix:tuple = (3,3),num_frames=10) -> None:
         self.neighborhood_matrix = neighborhood_matrix
         self.frames_history = None
+        self.num_frames = num_frames
     
     def __call__(self, frame):
         if self.frames_history is None:
@@ -62,6 +63,9 @@ class PESMODForegroundEstimation():
             foreground = np.abs(background_patches.reshape(-1) - np.repeat(frame, filter_w * filter_h)).reshape(w, h, -1).min(axis=2).astype(np.uint8)
 
             self.frames_history = np.append(self.frames_history,np.expand_dims(frame, axis=0), axis=0)
+            
+            if self.frames_history.shape[0]> self.num_frames:
+                self.frames_history = self.frames_history[-self.num_frames:]
             return foreground
 
 
