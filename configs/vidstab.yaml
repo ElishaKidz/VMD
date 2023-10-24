@@ -1,0 +1,28 @@
+stabilizer:
+  stabilizer_name: 'VidStabStabilization'
+  stabilizer_params:
+    kp_method: "MSER"
+    smoothing_window: 1
+    grow_window: False
+
+  
+binarizer:
+  binarizer_name: 'DilateErodeBinarizer'
+  binarizer_params:
+    dilate_kwargs:
+      iterations: 1
+
+    erode_kwargs:
+      iterations: 1
+
+
+detector:
+  detector_name: 'DetectionsFromContours'
+    
+
+foreground_estimator:
+  foreground_estimator_name: 'PESMODForegroundEstimation'
+  foreground_estimator_params:
+    num_frames: 100
+
+

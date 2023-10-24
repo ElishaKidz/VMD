@@ -3,19 +3,21 @@ from vmd import VMD
 import os
 import cv2
 import pandas as pd
-from utils import load_yaml,create_video_capture,draw_video_from_bool_csv 
+from utils import load_yaml, create_video_capture, draw_video_from_bool_csv
 from binarize import binarizers
 from detections import detectors
-from stabilization import stabilizers
+from stabilization import stabilizers, KLTStabilization
 from foreground import foreground_estimators
 from vmd import VMD
+from stabilization import NoStability
 
-def main(vmd_obj,video_cap,save_detections_file = None,rendered_video_file_path=None,frame_limit=100):
-    records = [] 
+
+def main(vmd_obj, video_cap, save_detections_file=None, rendered_video_file_path=None, frame_limit=100):
+    records = []
     while True:
         frame_num = video_cap.get(cv.CAP_PROP_POS_FRAMES)
         success, frame = video_cap.read()
-        if not success or frame_num>= frame_limit:
+        if not success or frame_num >= frame_limit:
             break
         frame_bboxes = vmd_obj(frame)
         frame_bboxes = frame_bboxes.assign(frame_num=frame_num)
@@ -28,32 +30,37 @@ def main(vmd_obj,video_cap,save_detections_file = None,rendered_video_file_path=
     
     if rendered_video_file_path is not None:
         video_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-        draw_video_from_bool_csv(video_cap,video_bboxes_df,rendered_video_file_path,frame_limit)
+        draw_video_from_bool_csv(video_cap, video_bboxes_df, rendered_video_file_path, frame_limit)
             
 
 if __name__ == '__main__':
     from pathlib import Path
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--video_path',type=str)
-    parser.add_argument('--config_path',type=str,default=Path('configs/default.yaml'))
-    parser.add_argument('--bbox_save_path',type=str,default=Path('outputs/bboxes/result.csv'))
-    parser.add_argument('--rendered_video_save_path',type=str,default=Path('outputs/videos/result.mp4'))
-    parser.add_argument('--frame_limit',type=int,default=500)
+    parser.add_argument('--video_path', type=str)
+    parser.add_argument('--config_path', type=str, default=Path('configs/default.yaml'))
+    parser.add_argument('--bbox_save_path', type=str, default=Path('outputs/bboxes/result.csv'))
+    parser.add_argument('--rendered_video_save_path', type=str, default=Path('outputs/videos/result.mp4'))
+    parser.add_argument('--frame_limit', type=int, default=500)
 
     args = parser.parse_args()
     
     vmd_params = load_yaml(args.config_path)    
     video_cap = create_video_capture(args.video_path)
+
+    # kp_method = vmd_params['stabilizer']['stabilizer_params']['kp_method']
+    # smooth = vmd_params['stabilizer']['stabilizer_params']['smoothing_window']
+    # args.rendered_video_save_path = f"outputs/videos/results_{kp_method}_{smooth}.mp4"
+    args.rendered_video_save_path = f"outputs/videos/klm_stability_200.mp4"
     
-    stabilizer = stabilizers[vmd_params['stabilizer']['stabilizer_name']](**vmd_params['stabilizer'].get('stabilizer_params',{}))
-    binarizer = binarizers[vmd_params['binarizer']['binarizer_name']](**vmd_params['binarizer'].get('binarizer_params',{}))
-    detector = detectors[vmd_params['detector']['detector_name']](**vmd_params['detector'].get('detector_params',{}))
-    foreground_estimator = foreground_estimators[vmd_params['foreground_estimator']['foreground_estimator_name']](**vmd_params['foreground_estimator'].get('foreground_estimator_params',{}))
-    vmd = VMD(stabilizer,foreground_estimator,binarizer,detector)
-    main(vmd,video_cap,args.bbox_save_path,args.rendered_video_save_path,args.frame_limit)
-
-
+    # stabilizer = stabilizers[vmd_params['stabilizer']['stabilizer_name']](**vmd_params['stabilizer'].get('stabilizer_params', {}))
+    stabilizer = KLTStabilization(**vmd_params['stabilizer'].get('stabilizer_params', {}))
+    # stabilizer = NoStability()
+    binarizer = binarizers[vmd_params['binarizer']['binarizer_name']](**vmd_params['binarizer'].get('binarizer_params', {}))
+    detector = detectors[vmd_params['detector']['detector_name']](**vmd_params['detector'].get('detector_params', {}))
+    foreground_estimator = foreground_estimators[vmd_params['foreground_estimator']['foreground_estimator_name']](**vmd_params['foreground_estimator'].get('foreground_estimator_params', {}))
+    vmd = VMD(stabilizer, foreground_estimator, binarizer, detector)
+    main(vmd, video_cap, args.bbox_save_path, args.rendered_video_save_path, args.frame_limit)
     
     # vmd_model = VMD()
     # example_video_path = Path('data/DJI_20230316103415_0012_W.MP4')

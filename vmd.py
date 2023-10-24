@@ -49,7 +49,7 @@ import logging
 #     return cap
 
 class VMD:
-    def __init__(self, video_stabilization_obj,foreground_estimation_obj,binary_frame_creator_obj,bbox_creator_obj):
+    def __init__(self, video_stabilization_obj, foreground_estimation_obj, binary_frame_creator_obj, bbox_creator_obj):
         
         logging.basicConfig(level=logging.DEBUG)
         self.video_stabilization_obj = video_stabilization_obj
@@ -58,16 +58,17 @@ class VMD:
         self.bbox_creator_obj = bbox_creator_obj
         self.frame_counter = 0
 
-    def __call__(self,frame):
+    def __call__(self, frame):
         # the cv2 caption reads all frames defaultly as bgr therefore they are converted to gray.
         frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
         stabilized_frame = self.video_stabilization_obj(frame)
         foreground_estimation = self.foreground_estimation_obj(stabilized_frame)
         binary_foreground_estimation = self.binary_frame_creator_obj(foreground_estimation)
+        # max_bin_val = foreground_estimation.max()
         frame_bboxes = self.bbox_creator_obj(binary_foreground_estimation)
         logging.debug(f'frame number {self.frame_counter}')
-        self.frame_counter +=1
+        self.frame_counter += 1
         return frame_bboxes
     
 
