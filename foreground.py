@@ -5,8 +5,11 @@ from skimage.util import view_as_windows
 foreground_estimators = {}
 
 
-def register(cls):
-    foreground_estimators[cls.__name__] = cls
+def register(name):
+    def register_func_fn(cls):
+        foreground_estimators[name] = cls
+        return cls
+    return register_func_fn
 
 
 def gammaCorrection(src, gamma):
@@ -17,7 +20,8 @@ def gammaCorrection(src, gamma):
 
     return cv.LUT(src, table)
 
-@register
+
+@register("MedianForegroundEstimation")
 class MedianForegroundEstimation:
     def __init__(self, num_frames=10) -> None:
         self.frames_history = []
@@ -38,7 +42,7 @@ class MedianForegroundEstimation:
         return foreground
 
 
-@register
+@register("MOG2")
 class MOG2():
     def __init__(self, **kwargs):
         self.fgbg = cv.createBackgroundSubtractorMOG2(**kwargs)
@@ -48,7 +52,7 @@ class MOG2():
         return fgmask
 
 
-@register
+@register("PESMODForegroundEstimation")
 class PESMODForegroundEstimation():
     def __init__(self, neighborhood_matrix: tuple = (3, 3), num_frames=10) -> None:
         self.neighborhood_matrix = neighborhood_matrix
@@ -81,7 +85,7 @@ class PESMODForegroundEstimation():
             return foreground.astype(np.uint8)
 
 
-@register
+@register("NormalizedPESMODForegroundEstimation")
 class NormalizedPESMODForegroundEstimation(PESMODForegroundEstimation):
     def __init__(self, neighborhood_matrix: tuple = (3, 3), num_frames=10):
         super(NormalizedPESMODForegroundEstimation, self).__init__(neighborhood_matrix, num_frames)

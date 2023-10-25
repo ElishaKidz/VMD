@@ -8,8 +8,11 @@ import cv2
 stabilizers = {}
 
 
-def register(cls):
-    stabilizers[cls.__name__] = cls
+def register(name):
+    def register_func_fn(cls):
+        stabilizers[name] = cls
+        return cls
+    return register_func_fn
 
 
 # @register
@@ -58,6 +61,7 @@ def register(cls):
 #         rotated_frame = cv.warpPerspective(frame, rot_mat, (frame.shape[1],frame.shape[0]))
 #         return rotated_frame
 
+@register("OpticalFlowStabilization")
 class OpticalFlowStabilization:
     def __init__(self, rotation_matrix_buffer_size=10, key_point_kwargs: dict = None,
                  optical_flow_kwargs: dict = None) -> None:
@@ -119,6 +123,7 @@ class OpticalFlowStabilization:
         return rotated_frame
 
 
+@register("KLTStabilization")
 class KLTStabilization(OpticalFlowStabilization):
     def __init__(self, rotation_matrix_buffer_size=10, key_point_kwargs: dict = None,
                  optical_flow_kwargs: dict = None) -> None:
@@ -136,7 +141,7 @@ class KLTStabilization(OpticalFlowStabilization):
         return self.klt.H
 
 
-@register
+@register("VidStabStabilization")
 class VidStabStabilization:
     def __init__(self, kp_method="GFTT", smoothing_window=1, grow_window=False) -> None:
         self.stabilizer = VidStab(kp_method=kp_method)
@@ -162,6 +167,7 @@ class VidStabStabilization:
         return stabilized_frame
 
 
+@register("NoStability")
 class NoStability:
     def __init__(self):
         pass

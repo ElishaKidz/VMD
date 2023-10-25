@@ -4,13 +4,16 @@ import numpy as np
 binarizers = {}
 
 
-def register(cls):
-    binarizers[cls.__name__] = cls
+def register(name):
+    def register_func_fn(cls):
+        binarizers[name] = cls
+        return cls
+    return register_func_fn
 
 
-@register
+@register("DilateErodeBinarizer")
 class DilateErodeBinarizer:
-    def __init__(self, diff_frame_threshold: int = 170, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
+    def __init__(self, diff_frame_threshold: int = 150, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
                  dilate_kwargs: dict = None, erode_kwargs: dict = None) -> None:
         self.diff_frame_threshold = diff_frame_threshold
         self.dilate_kernel = np.ones(dilate_kernel_size)
@@ -23,4 +26,24 @@ class DilateErodeBinarizer:
         thresh_frame = cv.erode(thresh_frame, self.erode_kernel, **self.erode_kwargs)
         thresh_frame = cv.dilate(thresh_frame, self.dilate_kernel, **self.dilate_kwargs)
         return thresh_frame
+
+
+@register("DilateErodeDynamicBinarizer")
+class DilateErodeDynamicBinarizer(DilateErodeBinarizer):
+    def __init__(self, diff_frame_threshold: int = 150, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
+                 dilate_kwargs: dict = None, erode_kwargs: dict = None):
+        super(DilateErodeDynamicBinarizer, self).__init__(diff_frame_threshold, dilate_kernel_size, erode_kernel_size,
+                                                          dilate_kwargs, erode_kwargs)
+
+    def __call__(self, gray_frame):
+        flat_array = gray_frame.flatten()
+        mn, std = np.mean(flat_array), np.std(flat_array)
+        statistic_thresh = mn + 5*std
+        self.diff_frame_threshold = int(0.5 * statistic_thresh + 0.5 * self.diff_frame_threshold)
+        thresh_frame = \
+            cv.threshold(src=gray_frame, thresh=self.diff_frame_threshold, maxval=255, type=cv.THRESH_BINARY)[1]
+        thresh_frame = cv.erode(thresh_frame, self.erode_kernel, **self.erode_kwargs)
+        thresh_frame = cv.dilate(thresh_frame, self.dilate_kernel, **self.dilate_kwargs)
+        return thresh_frame
+
     
