@@ -1,6 +1,5 @@
 import numpy as np
 import cv2 as cv
-from utils import cell_neighbors
 from skimage.util import view_as_windows
 foreground_estimators = {}
 
