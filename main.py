@@ -51,7 +51,7 @@ if __name__ == '__main__':
     # kp_method = vmd_params['stabilizer']['stabilizer_params']['kp_method']
     # smooth = vmd_params['stabilizer']['stabilizer_params']['smoothing_window']
     # args.rendered_video_save_path = f"outputs/videos/results_{kp_method}_{smooth}.mp4"
-    args.rendered_video_save_path = f"outputs/videos/klm_stability_200.mp4"
+    args.rendered_video_save_path = f"outputs/videos/klm_stability_IRX_gamma_170.mp4"
     
     # stabilizer = stabilizers[vmd_params['stabilizer']['stabilizer_name']](**vmd_params['stabilizer'].get('stabilizer_params', {}))
     stabilizer = KLTStabilization(**vmd_params['stabilizer'].get('stabilizer_params', {}))

@@ -71,13 +71,27 @@ class PESMODForegroundEstimation():
             background_patches = view_as_windows(padded_background, self.neighborhood_matrix)
 
             w, h = frame.shape
-            foreground = np.abs(background_patches.reshape(-1) - np.repeat(frame, filter_w * filter_h)).reshape(w, h, -1).min(axis=2)# .astype(np.uint8)
+            foreground = np.abs(background_patches.reshape(-1) - np.repeat(frame, filter_w * filter_h)).reshape(w, h, -1).min(axis=2).astype(np.uint8)
 
             self.frames_history = np.append(self.frames_history, np.expand_dims(frame, axis=0), axis=0)
             
             if self.frames_history.shape[0] > self.num_frames:
                 self.frames_history = self.frames_history[-self.num_frames:]
-            min_larger_then_zero = min(i for i in foreground.flatten() if i > 0)
-            foreground[foreground == 0] = min_larger_then_zero
-            foreground = (foreground - np.min(foreground)) / (np.max(foreground) - np.min(foreground)) * 255
+
             return foreground.astype(np.uint8)
+
+
+@register
+class NormalizedPESMODForegroundEstimation(PESMODForegroundEstimation):
+    def __init__(self, neighborhood_matrix: tuple = (3, 3), num_frames=10):
+        super(NormalizedPESMODForegroundEstimation, self).__init__(neighborhood_matrix, num_frames)
+
+    def __call__(self, frame):
+        foreground = super(NormalizedPESMODForegroundEstimation, self).__call__(frame)
+        min_larger_then_zero = min(i for i in foreground.flatten() if i > 0)
+        foreground[foreground == 0] = min_larger_then_zero
+        foreground = (foreground - np.min(foreground)) / (np.max(foreground) - np.min(foreground)) * 255
+        foreground = gammaCorrection(foreground.astype(np.uint8), 2.2)
+        return foreground.astype(np.uint8)
+
+
