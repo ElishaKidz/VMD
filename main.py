@@ -1,8 +1,10 @@
 import os
 import time
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
 import cv2
+import numpy as np
 import pandas as pd
 from utils import load_yaml, create_video_capture, draw_video_from_bool_csv
 from binarize import binarizers
@@ -19,6 +21,28 @@ VIDEOS_PATH = 'outputs/videos'
 
 def run(camera_name, vmd_obj, video_cap, frame_limit, save_detections_file=None, rendered_video_file_path=None):
     records = []
+    # TODO: Give every camera name, some unique port
+    ip = '239.0.0.7'
+    port = 1234
+
+    # TODO: which width+height would we like
+    video_width = int(video_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    video_height = int(video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    video_frame_rate = round(float(video_cap.get(cv2.CAP_PROP_FPS)), 2)
+
+    broadcast_command = f"ffmpeg -re " \
+                        f"-f rawvideo " \
+                        f"-pix_fmt rgb24 " \
+                        f"-s {video_width}x{video_height} " \
+                        f"-i pipe: " \
+                        f"-pix_fmt yuv420p " \
+                        f"-f mpegts " \
+                        f"-r {video_frame_rate} " \
+                        f"udp://{ip}:{port}"
+
+    broadcast_process = subprocess.Popen(broadcast_command.split(" "), stdin=subprocess.PIPE, shell=True)
+
     while True:
         read_frame_time = time.perf_counter()
         ret, frame = video_cap.read()
@@ -34,12 +58,19 @@ def run(camera_name, vmd_obj, video_cap, frame_limit, save_detections_file=None,
         for bbox in frame_bboxes.values:
             x, y, width, height = bbox
             frame = cv2.rectangle(frame, (x, y), (x + width, y + height), color=(0, 255, 0), thickness=2)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
         print(f"rect: {time.perf_counter() - rect_time}")
 
-        cv2.imshow(camera_name, frame)
+        subprocess_write_time = time.perf_counter()
+        broadcast_process.stdin.write(frame.astype(np.uint8).tobytes())
+        print(f"subprocess: {time.perf_counter() - subprocess_write_time}")
 
         if cv2.waitKey(20) & 0xFF == ord('q'):
             break
+
+    # TODO: Think how to close the subprocess, or never... restarts to support failure cases
+    # broadcast_process.poll()
     video_cap.release()
 
     video_bboxes_df = pd.concat(records).astype('int32')
@@ -61,7 +92,7 @@ def get_camera_name(camera_path: str) -> str:
 
 def main(camera_path: str, config_path=Path('configs/default.yaml')):
     camera_name = get_camera_name(camera_path)
-    #camera_name='RF'
+    # camera_name='RF'
     bbox_save_path = Path(f'{BBOXES_PATH}/{camera_name}.csv')
     rendered_video_save_path = Path(f'{VIDEOS_PATH}/{camera_name}.mp4')
     vmd_params = load_yaml(config_path)
@@ -83,8 +114,11 @@ def main(camera_path: str, config_path=Path('configs/default.yaml')):
 if __name__ == '__main__':
     Path(BBOXES_PATH).mkdir(exist_ok=True, parents=True)
     Path(VIDEOS_PATH).mkdir(exist_ok=True, parents=True)
-    camera_urls = ['rtsp%3A%2F%2Fonvif%3AOnvif%24123%402.55.86.220%3A554%2Flive%2F048d2037-a256-415c-b8a0-2c9a3a89255d']
-    with ThreadPoolExecutor(max_workers=6) as pool:
+
+    camera_urls = ['input_vmd.mkv']
+
+    # camera_urls = ['metula_1.mp4', 'metula_2.mp4', 'metula_3.mp4']
+    with ThreadPoolExecutor() as pool:
         futures = pool.map(main, camera_urls)
         try:
             for _, return_value in futures:
