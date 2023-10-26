@@ -1,13 +1,8 @@
 import cv2 as cv
 from vmd import VMD
-import os
 import cv2
 import pandas as pd
-from utils import load_yaml,create_video_capture,draw_video_from_bool_csv 
-from binarize import binarizers
-from detections import detectors
-from stabilization import stabilizers
-from foreground import foreground_estimators
+from utils import create_video_capture,draw_video_from_bool_csv 
 from vmd import VMD
 
 def main(vmd_obj,video_cap,save_detections_file = None,rendered_video_file_path=None,frame_limit=100):
@@ -43,20 +38,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     
-    vmd_params = load_yaml(args.config_path)    
     video_cap = create_video_capture(args.video_path)
     
-    stabilizer = stabilizers[vmd_params['stabilizer']['stabilizer_name']](**vmd_params['stabilizer'].get('stabilizer_params',{}))
-    binarizer = binarizers[vmd_params['binarizer']['binarizer_name']](**vmd_params['binarizer'].get('binarizer_params',{}))
-    detector = detectors[vmd_params['detector']['detector_name']](**vmd_params['detector'].get('detector_params',{}))
-    foreground_estimator = foreground_estimators[vmd_params['foreground_estimator']['foreground_estimator_name']](**vmd_params['foreground_estimator'].get('foreground_estimator_params',{}))
-    vmd = VMD(stabilizer,foreground_estimator,binarizer,detector)
-    main(vmd,video_cap,args.bbox_save_path,args.rendered_video_save_path,args.frame_limit)
-
-
-    
-    # vmd_model = VMD()
-    # example_video_path = Path('data/DJI_20230316103415_0012_W.MP4')
-    # output_video_path = Path('outputs/result.mp4')
-    # df = vmd_model.get_rects_df(str(example_video_path))
-    # draw_video_from_bool_csv(str(example_video_path), df, str(output_video_path))
+    vmd = VMD(args.config_path)
+    main(vmd, video_cap, args.bbox_save_path, args.rendered_video_save_path, args.frame_limit)
