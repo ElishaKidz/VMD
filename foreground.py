@@ -30,7 +30,7 @@ class MedianForegroundEstimation:
 class MOG2():
     def __init__(self,**kwargs):
         self.fgbg = cv.createBackgroundSubtractorMOG2(**kwargs)
-    
+
     def __call__(self, frame):
         fgmask = self.fgbg.apply(frame)
         return fgmask
@@ -42,13 +42,13 @@ class PESMODForegroundEstimation():
         self.neighborhood_matrix = neighborhood_matrix
         self.frames_history = None
         self.num_frames = num_frames
-    
+
     def __call__(self, frame):
         if self.frames_history is None:
             self.frames_history = np.expand_dims(frame,axis=0)
-            self.window_sum = self.frames_history[-1].copy().astype(np.int32)
+            self.window_sum = self.frames_history[-1].astype(np.int32)
             return frame
-        
+
         else:
 
             filter_w, filter_h = self.neighborhood_matrix
@@ -63,7 +63,7 @@ class PESMODForegroundEstimation():
             foreground = np.abs(background_patches.reshape(-1) - np.repeat(frame, filter_w * filter_h)).reshape(w, h, -1).min(axis=2).astype(np.uint8)
 
             self.frames_history = np.append(self.frames_history,np.expand_dims(frame, axis=0), axis=0)
-            
+
             if self.frames_history.shape[0]> self.num_frames:
                 self.window_sum -= self.frames_history[0]
                 self.frames_history = self.frames_history[1:]
