@@ -1,10 +1,10 @@
 import cv2 as cv
 import logging
-from .binarize import binarizers
-from .detections import detectors
-from .stabilization import stabilizers
-from .foreground import foreground_estimators
-from .utils import load_yaml
+from VMD.binarize import binarizers
+from VMD.detections import detectors
+from VMD.stabilization import stabilizers
+from VMD.foreground import foreground_estimators
+from SoiUtils.load import load_yaml
 
 class VMD:
     def __init__(self, yaml_path) -> None:   
