@@ -1,5 +1,5 @@
 stabilizer:
-  stabilizer_name: 'KLTStabilization'
+  stabilizer_name: 'OpticalFlowStabilization'
   stabilizer_params:
     rotation_matrix_buffer_size: 10
     key_point_kwargs:
