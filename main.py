@@ -10,6 +10,7 @@ from stabilization import stabilizers, KLTStabilization
 from foreground import foreground_estimators
 from vmd import VMD
 from stabilization import NoStability
+from fastMCD_master.MCDWrapper import MCDWrapper
 
 
 def main(vmd_obj, video_cap, save_detections_file=None, rendered_video_file_path=None, frame_limit=100):
@@ -51,12 +52,12 @@ if __name__ == '__main__':
     # kp_method = vmd_params['stabilizer']['stabilizer_params']['kp_method']
     # smooth = vmd_params['stabilizer']['stabilizer_params']['smoothing_window']
     # args.rendered_video_save_path = f"outputs/videos/results_{kp_method}_{smooth}.mp4"
-    args.rendered_video_save_path = f"outputs/videos/klm_stability_gamma_dynamic.mp4"
+    args.rendered_video_save_path = f"outputs/videos/tel_move.mp4"
     
     stabilizer = stabilizers[vmd_params['stabilizer']['stabilizer_name']](**vmd_params['stabilizer'].get('stabilizer_params', {}))
     binarizer = binarizers[vmd_params['binarizer']['binarizer_name']](**vmd_params['binarizer'].get('binarizer_params', {}))
     detector = detectors[vmd_params['detector']['detector_name']](**vmd_params['detector'].get('detector_params', {}))
-    foreground_estimator = foreground_estimators[vmd_params['foreground_estimator']['foreground_estimator_name']](**vmd_params['foreground_estimator'].get('foreground_estimator_params', {}))
+    foreground_estimator = MCDWrapper()  # foreground_estimators[vmd_params['foreground_estimator']['foreground_estimator_name']](**vmd_params['foreground_estimator'].get('foreground_estimator_params', {}))
     vmd = VMD(stabilizer, foreground_estimator, binarizer, detector)
     main(vmd, video_cap, args.bbox_save_path, args.rendered_video_save_path, args.frame_limit)
     

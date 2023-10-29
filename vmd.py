@@ -62,7 +62,8 @@ class VMD:
         # the cv2 caption reads all frames defaultly as bgr therefore they are converted to gray.
         frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
-        stabilized_frame = self.video_stabilization_obj(frame)
+        # stabilized_frame = self.video_stabilization_obj(frame)
+        stabilized_frame = frame
         foreground_estimation = self.foreground_estimation_obj(stabilized_frame)
         binary_foreground_estimation = self.binary_frame_creator_obj(foreground_estimation)
         # max_bin_val = foreground_estimation.max()

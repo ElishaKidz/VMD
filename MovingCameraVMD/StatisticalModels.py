@@ -40,11 +40,13 @@ class StatisticalModel:
 
         self.prev_mean = None
         self.prev_variance = None
-        self.prev_age = None
+        # self.prev_age = None
+        self.prev_age = 1
 
         self.mean = None
         self.variance = None
-        self.age = None
+        # self.age = None
+        self.age = 1
         self.values = None
 
     def init_model(self, values: np.array):
@@ -53,12 +55,12 @@ class StatisticalModel:
         :param values: the values of the grid the model belongs to
         """
         self.prev_mean = np.mean(values)
-        self.prev_variance = np.var(values)
-        self.prev_age = self.age_init
+        self.prev_variance = np.var(values)  # TODO: according to paper needs to be var_init
+        # self.prev_age = self.age_init
 
         self.mean = self.prev_mean
         self.variance = self.prev_variance
-        self.age = self.prev_age
+        self.age = 1    # self.prev_age
 
     def update_mean(self, mean, M, age):   # eq 1
         """
@@ -66,11 +68,12 @@ class StatisticalModel:
         :param mean: compensated_mean
         :param M: M parameter
         """
-        if self.mean:
-            self.prev_mean = self.mean
+        # if self.mean:
+        #     self.prev_mean = self.mean
         left = (age/(age+1)) * mean
         right = (1/(age + 1)) * M
         self.mean = left + right
+        self.prev_mean = self.mean
 
     def update_var(self, vr, V, age):   # eq 2
         """
@@ -78,23 +81,25 @@ class StatisticalModel:
         :param vr: compensated var
         :param V: V parameter
         """
-        if self.variance:
-            self.prev_variance = self.variance
+        # if self.variance:
+        #     self.prev_variance = self.variance
         left = (age/(age+1)) * vr
         right = (1/(age + 1)) * V
         self.variance = left + right
+        self.prev_variance = self.variance
 
     def update_age(self, age):   # eq 3
         """
         final age update according to equation 3
         :param age: compensated age
         """
-        if self.age:
-            self.prev_age = self.age
+        # if self.age:
+        #     self.prev_age = self.age
         self.age = age + 1
 
         if self.age > self.truncate_age:
             self.age = self.truncate_age
+        self.prev_age = self.age
 
     def get_prev_params(self):
         return self.prev_mean, self.prev_variance, self.prev_age

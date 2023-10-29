@@ -92,6 +92,7 @@ class NormalizedPESMODForegroundEstimation(PESMODForegroundEstimation):
 
     def __call__(self, frame):
         foreground = super(NormalizedPESMODForegroundEstimation, self).__call__(frame)
+        foreground = foreground.astype(np.float)
         min_larger_then_zero = min(i for i in foreground.flatten() if i > 0)
         foreground[foreground == 0] = min_larger_then_zero
         foreground = (foreground - np.min(foreground)) / (np.max(foreground) - np.min(foreground)) * 255

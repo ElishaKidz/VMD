@@ -84,7 +84,7 @@ class Grid:
             self.app_model = copy.copy(self.can_model)
             self.can_model.init_model(self.values)
         else:
-            self.can_model.age += 0.5
+            self.can_model.age += 1
 
     def get_threshold_mat(self):
         chosen = np.zeros_like(self.values)
