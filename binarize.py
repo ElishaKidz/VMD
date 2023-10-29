@@ -11,6 +11,15 @@ def register(name):
     return register_func_fn
 
 
+def gammaCorrection(src, gamma):
+    invGamma = 1 / gamma
+
+    table = [((i / 255) ** invGamma) * 255 for i in range(256)]
+    table = np.array(table, np.uint8)
+
+    return cv.LUT(src, table)
+
+
 @register("DilateErodeBinarizer")
 class DilateErodeBinarizer:
     def __init__(self, diff_frame_threshold: int = 150, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
@@ -46,4 +55,18 @@ class DilateErodeDynamicBinarizer(DilateErodeBinarizer):
         thresh_frame = cv.dilate(thresh_frame, self.dilate_kernel, **self.dilate_kwargs)
         return thresh_frame
 
-    
+
+@register("NormalizedDilateErodeBinarizer")
+class NormalizedDilateErodeBinarizer(DilateErodeBinarizer):
+    def __init__(self, diff_frame_threshold: int = 150, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
+                 dilate_kwargs: dict = None, erode_kwargs: dict = None):
+        super(NormalizedDilateErodeBinarizer, self).__init__(diff_frame_threshold, dilate_kernel_size,
+                                                             erode_kernel_size, dilate_kwargs, erode_kwargs)
+
+    def __call__(self, frame):
+        foreground = frame.astype(np.float)
+        min_larger_then_zero = min(i for i in foreground.flatten() if i > 0)
+        foreground[foreground == 0] = min_larger_then_zero
+        foreground = (foreground - np.min(foreground)) / (np.max(foreground) - np.min(foreground)) * 255
+        foreground = gammaCorrection(foreground.astype(np.uint8), 2.2)
+        return super(NormalizedDilateErodeBinarizer, self).__call__(foreground.astype(np.uint8))

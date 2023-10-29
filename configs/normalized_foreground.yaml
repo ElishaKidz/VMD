@@ -11,7 +11,7 @@ stabilizer:
       nextPts: 
 
 binarizer:
-  binarizer_name: 'DilateErodeBinarizer'
+  binarizer_name: 'NormalizedDilateErodeBinarizer'
   binarizer_params:
     dilate_kwargs:
       iterations: 1
@@ -25,7 +25,7 @@ detector:
     
 
 foreground_estimator:
-  foreground_estimator_name: 'NormalizedPESMODForegroundEstimation'
+  foreground_estimator_name: 'PESMODForegroundEstimation'
   foreground_estimator_params:
     num_frames: 100
 

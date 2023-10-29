@@ -12,15 +12,6 @@ def register(name):
     return register_func_fn
 
 
-def gammaCorrection(src, gamma):
-    invGamma = 1 / gamma
-
-    table = [((i / 255) ** invGamma) * 255 for i in range(256)]
-    table = np.array(table, np.uint8)
-
-    return cv.LUT(src, table)
-
-
 @register("MedianForegroundEstimation")
 class MedianForegroundEstimation:
     def __init__(self, num_frames=10) -> None:
@@ -83,19 +74,3 @@ class PESMODForegroundEstimation():
                 self.frames_history = self.frames_history[-self.num_frames:]
 
             return foreground.astype(np.uint8)
-
-
-@register("NormalizedPESMODForegroundEstimation")
-class NormalizedPESMODForegroundEstimation(PESMODForegroundEstimation):
-    def __init__(self, neighborhood_matrix: tuple = (3, 3), num_frames=10):
-        super(NormalizedPESMODForegroundEstimation, self).__init__(neighborhood_matrix, num_frames)
-
-    def __call__(self, frame):
-        foreground = super(NormalizedPESMODForegroundEstimation, self).__call__(frame)
-        min_larger_then_zero = min(i for i in foreground.flatten() if i > 0)
-        foreground[foreground == 0] = min_larger_then_zero
-        foreground = (foreground - np.min(foreground)) / (np.max(foreground) - np.min(foreground)) * 255
-        foreground = gammaCorrection(foreground.astype(np.uint8), 2.2)
-        return foreground.astype(np.uint8)
-
-
