@@ -3,16 +3,21 @@ import cv2 as cv
 from skimage.util import view_as_windows
 foreground_estimators = {}
 
-def register(cls):
-    foreground_estimators[cls.__name__] = cls
 
-@register
+def register(name):
+    def register_func_fn(cls):
+        foreground_estimators[name] = cls
+        return cls
+    return register_func_fn
+
+
+@register("MedianForegroundEstimation")
 class MedianForegroundEstimation:
-    def __init__(self,num_frames=10) -> None:
+    def __init__(self, num_frames=10) -> None:
         self.frames_history = []
         self.num_frames = num_frames
-    def __call__(self,frame):
 
+    def __call__(self, frame):
         if len(self.frames_history) == 0:
             foreground = frame
 
@@ -20,15 +25,16 @@ class MedianForegroundEstimation:
             background = np.median(self.frames_history, axis=0).astype(dtype=np.uint8)
             foreground = cv.absdiff(frame, background)
 
-            if len(self.frames_history)>=self.num_frames:
+            if len(self.frames_history) >= self.num_frames:
                 self.frames_history = list(self.frames_history[-self.num_frames:])
 
         self.frames_history.append(frame)
         return foreground
 
-@register
+
+@register("MOG2")
 class MOG2():
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
         self.fgbg = cv.createBackgroundSubtractorMOG2(**kwargs)
     
     def __call__(self, frame):
@@ -36,16 +42,16 @@ class MOG2():
         return fgmask
 
 
-@register
+@register("PESMODForegroundEstimation")
 class PESMODForegroundEstimation():
-    def __init__(self,neighborhood_matrix:tuple = (3,3),num_frames=10) -> None:
+    def __init__(self, neighborhood_matrix: tuple = (3, 3), num_frames=10) -> None:
         self.neighborhood_matrix = neighborhood_matrix
         self.frames_history = None
         self.num_frames = num_frames
     
     def __call__(self, frame):
         if self.frames_history is None:
-            self.frames_history = np.expand_dims(frame,axis=0)
+            self.frames_history = np.expand_dims(frame, axis=0)
             return frame
         
         else:
@@ -61,10 +67,9 @@ class PESMODForegroundEstimation():
             w, h = frame.shape
             foreground = np.abs(background_patches.reshape(-1) - np.repeat(frame, filter_w * filter_h)).reshape(w, h, -1).min(axis=2).astype(np.uint8)
 
-            self.frames_history = np.append(self.frames_history,np.expand_dims(frame, axis=0), axis=0)
+            self.frames_history = np.append(self.frames_history, np.expand_dims(frame, axis=0), axis=0)
             
-            if self.frames_history.shape[0]> self.num_frames:
+            if self.frames_history.shape[0] > self.num_frames:
                 self.frames_history = self.frames_history[-self.num_frames:]
-            return foreground
 
-
+            return foreground.astype(np.uint8)
