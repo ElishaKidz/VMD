@@ -22,7 +22,7 @@ def gammaCorrection(src, gamma):
 
 @register("DilateErodeBinarizer")
 class DilateErodeBinarizer:
-    def __init__(self, diff_frame_threshold: int = 150, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
+    def __init__(self, diff_frame_threshold: int = 30, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
                  dilate_kwargs: dict = None, erode_kwargs: dict = None) -> None:
         self.diff_frame_threshold = diff_frame_threshold
         self.dilate_kernel = np.ones(dilate_kernel_size)
