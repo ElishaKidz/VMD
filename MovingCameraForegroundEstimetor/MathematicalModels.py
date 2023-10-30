@@ -47,10 +47,20 @@ class CompensationModel(BaseModel):
 
     @staticmethod
     def update_by_condition(cond, temp, prev, W, x_grid_coords, y_grid_coords, grid_overlap):
-        temp_mean[:, y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] = \
-            W_H[y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] * \
-            prev_means[:, prev_y_grid_coords[cond_horizontal],
-            x_overlap_idx[cond_horizontal]]  # weighted mean for the horizontal overlaping
+        """
+        weighted mean for directional overlapping
+        :param cond: directional cond
+        :param temp: store weighted mean in
+        :param prev: prev values
+        :param W: directional wights
+        :param x_grid_coords: x_grid_coords
+        :param y_grid_coords: y_grid_coords
+        :param grid_overlap: directional grid overlap
+        """
+        temp[:, y_grid_coords[cond], x_grid_coords[cond]] += \
+            W[y_grid_coords[cond], x_grid_coords[cond]] * \
+            prev[:, prev_y_grid_coords[cond],
+            grid_overlap[cond]]  # weighted mean for the direction overlaping
 
 
     def compensate(self, H, prev_means, prev_vars, prev_ages):
@@ -82,41 +92,42 @@ class CompensationModel(BaseModel):
 
         W = np.zeros((self.num_models, self.model_height, self.model_width))
 
-        temp_mean = np.zeros(prev_means.shape)
+        temp_means = np.zeros(prev_means.shape)
         temp_ages = np.zeros(prev_means.shape)
 
-        x_overlap_idx = prev_x_grid_coords + np.sign(offset_x).astype(
-            int)  # figure out X direction of jumping, taking the overlaping center index in X
+        x_overlap_idx = prev_x_grid_coords + np.sign(offset_x).astype(int)  # figure out X direction of jumping, taking the overlaping center index in X
         cond_horizontal = (prev_y_grid_coords >= 0) & (prev_y_grid_coords < self.model_height) & (x_overlap_idx >= 0) & (
                     x_overlap_idx < self.model_width)  # check if this crop is in image
 
-        temp_mean[:, y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] = \
-            W_H[y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] * \
-            prev_means[:, prev_y_grid_coords[cond_horizontal], x_overlap_idx[cond_horizontal]]  # weighted mean for the horizontal overlaping
-        temp_ages[:, y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] = \
-            W_H[y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] * \
-            prev_ages[:, prev_y_grid_coords[cond_horizontal], x_overlap_idx[cond_horizontal]]  # weighted agr for the horizontal overlaping
+        # horizontal overlapping
+        CompensationModel.update_by_condition(cond_horizontal, temp_means, prev_means, W_H, x_grid_coords, y_grid_coords,
+                                              x_overlap_idx)
+        CompensationModel.update_by_condition(cond_horizontal, temp_ages, prev_ages, W_H, x_grid_coords, y_grid_coords,
+                                              x_overlap_idx)
         W[:, y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] += W_H[y_grid_coords[cond_horizontal],
                                                                                     x_grid_coords[cond_horizontal]]
 
         # same for vertical
-        NewJ_V = prev_y_grid_coords + np.sign(offset_y).astype(int)
-        condV = (NewJ_V >= 0) & (NewJ_V < self.modelHeight) & (prev_x_grid_coords >= 0) & (prev_x_grid_coords < self.modelWidth)
-        temp_mean[:, y_grid_coords[condV], x_grid_coords[condV]] += W_V[y_grid_coords[condV], x_grid_coords[condV]] * prev_means[:, NewJ_V[condV], prev_x_grid_coords[condV]]
-        temp_ages[:, y_grid_coords[condV], x_grid_coords[condV]] += W_V[y_grid_coords[condV], x_grid_coords[condV]] * prev_ages[:, NewJ_V[condV], prev_x_grid_coords[condV]]
-        W[:, y_grid_coords[condV], x_grid_coords[condV]] += W_V[y_grid_coords[condV], x_grid_coords[condV]]
+        y_overlap_idx = prev_y_grid_coords + np.sign(offset_y).astype(int)
+        cond_vertical = (y_overlap_idx >= 0) & (y_overlap_idx < self.modelHeight) & (prev_x_grid_coords >= 0) & (prev_x_grid_coords < self.modelWidth)
+
+        CompensationModel.update_by_condition(cond_vertical, temp_means, prev_means, W_V, x_grid_coords, y_grid_coords,
+                                              y_overlap_idx)
+        CompensationModel.update_by_condition(cond_vertical, temp_ages, prev_ages, W_V, x_grid_coords, y_grid_coords,
+                                              y_overlap_idx)
+        W[:, y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]] += W_V[y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]]
 
         # same for diagonal
         x_overlap_idx = prev_x_grid_coords + np.sign(offset_x).astype(int)
-        NewJ_V = prev_y_grid_coords + np.sign(offset_y).astype(int)
-        condHV = (NewJ_V >= 0) & (NewJ_V < self.modelHeight) & (x_overlap_idx >= 0) & (x_overlap_idx < self.modelWidth)
-        temp_mean[:, y_grid_coords[condHV], x_grid_coords[condHV]] += W_HV[y_grid_coords[condHV], x_grid_coords[condHV]] * prev_means[:, NewJ_V[condHV], x_overlap_idx[condHV]]
-        temp_ages[:, y_grid_coords[condHV], x_grid_coords[condHV]] += W_HV[y_grid_coords[condHV], x_grid_coords[condHV]] * prev_ages[:, NewJ_V[condHV], x_overlap_idx[condHV]]
+        y_overlap_idx = prev_y_grid_coords + np.sign(offset_y).astype(int)
+        condHV = (y_overlap_idx >= 0) & (y_overlap_idx < self.modelHeight) & (x_overlap_idx >= 0) & (x_overlap_idx < self.modelWidth)
+        temp_means[:, y_grid_coords[condHV], x_grid_coords[condHV]] += W_HV[y_grid_coords[condHV], x_grid_coords[condHV]] * prev_means[:, y_overlap_idx[condHV], x_overlap_idx[condHV]]
+        temp_ages[:, y_grid_coords[condHV], x_grid_coords[condHV]] += W_HV[y_grid_coords[condHV], x_grid_coords[condHV]] * prev_ages[:, y_overlap_idx[condHV], x_overlap_idx[condHV]]
         W[:, y_grid_coords[condHV], x_grid_coords[condHV]] += W_HV[y_grid_coords[condHV], x_grid_coords[condHV]]
 
         # same for closest center
         condSelf = (prev_y_grid_coords >= 0) & (prev_y_grid_coords < self.modelHeight) & (prev_x_grid_coords >= 0) & (prev_x_grid_coords < self.modelWidth)
-        temp_mean[:, y_grid_coords[condSelf], x_grid_coords[condSelf]] += W_self[y_grid_coords[condSelf], x_grid_coords[condSelf]] * prev_means[:, prev_y_grid_coords[condSelf],
+        temp_means[:, y_grid_coords[condSelf], x_grid_coords[condSelf]] += W_self[y_grid_coords[condSelf], x_grid_coords[condSelf]] * prev_means[:, prev_y_grid_coords[condSelf],
                                                                                     prev_x_grid_coords[condSelf]]
         temp_ages[:, y_grid_coords[condSelf], x_grid_coords[condSelf]] += W_self[y_grid_coords[condSelf], x_grid_coords[condSelf]] * prev_ages[:, prev_y_grid_coords[condSelf],
                                                                                     prev_x_grid_coords[condSelf]]
@@ -127,7 +138,7 @@ class CompensationModel(BaseModel):
 
         self.temp_ages[:] = 0
         W[W == 0] = 1
-        self.temp_means += temp_mean / W
+        self.temp_means += temp_means / W
         self.temp_ages += temp_ages / W
 
         #  same shit for variance
@@ -138,16 +149,16 @@ class CompensationModel(BaseModel):
                                                                                x_overlap_idx[cond_horizontal]],
                                                                                2))  # TODO: not the same calculation. think deeply
 
-        temp_var[:, y_grid_coords[condV], x_grid_coords[condV]] += W_V[y_grid_coords[condV], x_grid_coords[condV]] * (prev_vars[:, NewJ_V[condV], prev_x_grid_coords[condV]] +
-                                                                      np.power(self.temp_means[:, y_grid_coords[condV], x_grid_coords[condV]] -
+        temp_var[:, y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]] += W_V[y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]] * (prev_vars[:, y_overlap_idx[cond_vertical], prev_x_grid_coords[cond_vertical]] +
+                                                                      np.power(self.temp_means[:, y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]] -
                                                                                self.prev_means[:,
-                                                                               NewJ_V[condV], prev_x_grid_coords[condV]],
+                                                                               y_overlap_idx[cond_vertical], prev_x_grid_coords[cond_vertical]],
                                                                                2))
 
-        temp_var[:, y_grid_coords[condHV], x_grid_coords[condHV]] += W_HV[y_grid_coords[condHV], x_grid_coords[condHV]] * (prev_vars[:, NewJ_V[condHV], x_overlap_idx[condHV]] +
+        temp_var[:, y_grid_coords[condHV], x_grid_coords[condHV]] += W_HV[y_grid_coords[condHV], x_grid_coords[condHV]] * (prev_vars[:, y_overlap_idx[condHV], x_overlap_idx[condHV]] +
                                                                            np.power(self.temp_means[:, y_grid_coords[condHV],
                                                                                     x_grid_coords[condHV]] -
-                                                                                    self.prev_means[:, NewJ_V[condHV],
+                                                                                    self.prev_means[:, y_overlap_idx[condHV],
                                                                                     x_overlap_idx[condHV]],
                                                                                     2))
 

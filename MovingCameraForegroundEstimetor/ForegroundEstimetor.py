@@ -61,3 +61,4 @@ class ForegroundEstimetor:
         com_means, com_vars, com_ages = self.compensation_models.compensate(H, prev_means, prev_vars, prev_ages)
         foreground = self.statistical_models.get_foreground(com_means, com_vars, com_ages)
         return foreground
+
