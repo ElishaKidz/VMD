@@ -27,6 +27,7 @@ class KLTWrapper:
                          maxLevel=3,
                          criteria=(cv2.TERM_CRITERIA_MAX_ITER| cv2.TERM_CRITERIA_EPS, 20, 0.03))
         self.H = np.identity(3)
+        self.imgPrevGray = imgGray
 
     def InitFeatures(self, imgGray):
         (nj, ni) = imgGray.shape
@@ -41,9 +42,9 @@ class KLTWrapper:
         self.points1 = np.expand_dims(np.array(list(zip(J, I))), 1).astype(np.float32)
         self.points0, self.points1 = self.points1, self.points0
 
-    def RunTrack(self, image, imgPrev):
+    def RunTrack(self, image):
         if self.count > 0:
-            self.points1, _st, _err = cv2.calcOpticalFlowPyrLK(imgPrev, image, self.points0, None, **self.lk_params)
+            self.points1, _st, _err = cv2.calcOpticalFlowPyrLK(self.imgPrevGray, image, self.points0, None, **self.lk_params)
             good1 = self.points1[_st == 1]
             good2 = self.points0[_st == 1]
             self.count = len(good1)
@@ -53,6 +54,7 @@ class KLTWrapper:
         else:
             self.H = np.identity(3)
         self.InitFeatures(image)
+        self.imgPrevGray = image
         return self.H
 
     def makeHomoGraphy(self, p1, p2):

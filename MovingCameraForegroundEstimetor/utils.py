@@ -2,8 +2,8 @@ import numpy as np
 
 
 def get_grid_coords(num_grids_x, num_grids_y):
-    x_grid_coords = np.array([range(self.model_width)] * self.model_height).flatten()  # grid coordinates X
-    y_grid_coords = np.repeat(range(self.model_height), self.model_width)  # grid coordinates Y
+    x_grid_coords = np.array([range(num_grids_y)] * num_grids_x).flatten()  # grid coordinates X
+    y_grid_coords = np.repeat(range(num_grids_y), num_grids_x)  # grid coordinates Y
     return x_grid_coords, y_grid_coords
 
 

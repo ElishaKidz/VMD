@@ -4,8 +4,8 @@ from VMD.MovingCameraForegroundEstimetor.KLTWrapper import KLTWrapper
 
 
 class ForegroundEstimetor:
-    def __init__(self, num_models, block_size, var_init, var_trim, lam, theta_v, age_trim, theta_s, theta_d=4,
-                 sensetivity=False, smooth=False):
+    def __init__(self, num_models=2, block_size=4, var_init=20*20, var_trim=5*5, lam=0.001, theta_v=50*50, age_trim=30,
+                 theta_s=2, theta_d=4, sensetivity=False, smooth=False):
         self.is_first = True
 
         self.homography_calculator = KLTWrapper()
@@ -35,10 +35,11 @@ class ForegroundEstimetor:
         self.model_height, self.model_width = h // self.block_size, w // self.block_size   # calc num of grid in each axis
 
         self.compensation_models = CompensationModel(self.num_models, self.model_height, self.model_width,
-                                                     self.block_size, self.lam, self.theta_v)
+                                                     self.block_size, self.var_init, self.var_trim, self.lam,
+                                                     self.theta_v)
         self.statistical_models = StatisticalModel(self.num_models, self.model_height, self.model_width,
-                                                   self.block_size, self.age_trim, self.theta_s, self.theta_d,
-                                                   self.sensetivity)
+                                                   self.block_size, self.var_init, self.var_trim, self.age_trim,
+                                                   self.theta_s, self.theta_d, self.sensetivity)
 
         self.homography_calculator.init(gray_frame)
 
@@ -49,7 +50,7 @@ class ForegroundEstimetor:
                                                                       inited_ages)
         return self.statistical_models.get_foreground(gray_frame, com_means, com_vars, com_ages)
 
-    def get_foreground(self, gray_frame, H):
+    def get_foreground(self, gray_frame):
         if self.smooth:
             gray_frame = self.imgGray = cv2.GaussianBlur(gray_frame, (5, 5), 0)
 
@@ -59,6 +60,9 @@ class ForegroundEstimetor:
         prev_means, prev_vars, prev_ages = self.statistical_models.get_models()
         H = self.homography_calculator.RunTrack(gray_frame)
         com_means, com_vars, com_ages = self.compensation_models.compensate(H, prev_means, prev_vars, prev_ages)
-        foreground = self.statistical_models.get_foreground(com_means, com_vars, com_ages)
+        foreground = self.statistical_models.get_foreground(gray_frame, com_means, com_vars, com_ages)
         return foreground
+
+    def __call__(self, gray_frame):
+        return self.get_foreground(gray_frame)
 

@@ -11,6 +11,7 @@ from foreground import foreground_estimators
 from vmd import VMD
 from stabilization import NoStability
 from fastMCD_master.MCDWrapper import MCDWrapper
+from VMD.MovingCameraForegroundEstimetor.ForegroundEstimetor import ForegroundEstimetor
 
 
 def main(vmd_obj, video_cap, save_detections_file=None, rendered_video_file_path=None, frame_limit=100):
@@ -57,7 +58,8 @@ if __name__ == '__main__':
     stabilizer = stabilizers[vmd_params['stabilizer']['stabilizer_name']](**vmd_params['stabilizer'].get('stabilizer_params', {}))
     binarizer = binarizers[vmd_params['binarizer']['binarizer_name']](**vmd_params['binarizer'].get('binarizer_params', {}))
     detector = detectors[vmd_params['detector']['detector_name']](**vmd_params['detector'].get('detector_params', {}))
-    foreground_estimator = MCDWrapper()  # foreground_estimators[vmd_params['foreground_estimator']['foreground_estimator_name']](**vmd_params['foreground_estimator'].get('foreground_estimator_params', {}))
+    # foreground_estimator = MCDWrapper()  # foreground_estimators[vmd_params['foreground_estimator']['foreground_estimator_name']](**vmd_params['foreground_estimator'].get('foreground_estimator_params', {}))
+    foreground_estimator = ForegroundEstimetor()
     vmd = VMD(stabilizer, foreground_estimator, binarizer, detector)
     main(vmd, video_cap, args.bbox_save_path, args.rendered_video_save_path, args.frame_limit)
     
