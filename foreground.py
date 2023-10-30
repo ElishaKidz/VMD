@@ -3,16 +3,21 @@ import cv2 as cv
 from skimage.util import view_as_windows
 foreground_estimators = {}
 
-def register(cls):
-    foreground_estimators[cls.__name__] = cls
 
-@register
+def register(name):
+    def register_func_fn(cls):
+        foreground_estimators[name] = cls
+        return cls
+    return register_func_fn
+
+
+@register("MedianForegroundEstimation")
 class MedianForegroundEstimation:
-    def __init__(self,num_frames=10) -> None:
+    def __init__(self, num_frames=10) -> None:
         self.frames_history = []
         self.num_frames = num_frames
-    def __call__(self,frame):
 
+    def __call__(self, frame):
         if len(self.frames_history) == 0:
             foreground = frame
 
@@ -20,15 +25,16 @@ class MedianForegroundEstimation:
             background = np.median(self.frames_history, axis=0).astype(dtype=np.uint8)
             foreground = cv.absdiff(frame, background)
 
-            if len(self.frames_history)>=self.num_frames:
+            if len(self.frames_history) >= self.num_frames:
                 self.frames_history = list(self.frames_history[-self.num_frames:])
 
         self.frames_history.append(frame)
         return foreground
 
-@register
+
+@register("MOG2")
 class MOG2():
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
         self.fgbg = cv.createBackgroundSubtractorMOG2(**kwargs)
     
     def __call__(self, frame):
@@ -36,9 +42,9 @@ class MOG2():
         return fgmask
 
 
-@register
+@register("PESMODForegroundEstimation")
 class PESMODForegroundEstimation():
-    def __init__(self,neighborhood_matrix:tuple = (3,3),num_frames=10) -> None:
+    def __init__(self, neighborhood_matrix: tuple = (3, 3), num_frames=10) -> None:
         self.neighborhood_matrix = neighborhood_matrix
         self.frames_history = None
         self.num_frames = num_frames
@@ -75,5 +81,3 @@ class PESMODForegroundEstimation():
             self.window_sum += self.frames_history[-1]
 
             return foreground
-
-

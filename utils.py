@@ -64,10 +64,12 @@ def draw_video_from_bool_csv(video, df, output_video_path,frame_limit=None):
     video.release()
     writer.release()
 
+
 def create_video_capture(input_video_path):
     cap = cv.VideoCapture(input_video_path)
     assert cap.isOpened(), "Could not open video file"
     return cap
+
 
 def sliding_window(arr, window_size):
         """ Construct a sliding window view of the array"""
