@@ -6,7 +6,7 @@ import cv2
 
 class ForegroundEstimetor:
     def __init__(self, num_models=2, block_size=4, var_init=20.0*20.0, var_trim=5.0*5.0, lam=0.001, theta_v=50.0*50.0,
-                 age_trim=30, theta_s=2, theta_d=2, calc_probs=True, sensetivity="mixed", smooth=True):
+                 age_trim=30, theta_s=2, theta_d=2, calc_probs=False, sensetivity="mixed", smooth=True):
         self.is_first = True
 
         self.homography_calculator = KLTWrapper()
@@ -27,7 +27,6 @@ class ForegroundEstimetor:
         self.calc_probs = calc_probs
         self.sensetivity = sensetivity
         self.smooth = smooth
-
 
     def first_pass(self, gray_frame: np.array):
         self.is_first = False
@@ -57,8 +56,8 @@ class ForegroundEstimetor:
             return self.first_pass(gray_frame)
 
         if self.smooth:
-            gary_frame = cv2.medianBlur(gray_frame, 5)
-            gray_frame = cv2.GaussianBlur(gray_frame, (7, 7), 0)
+            # gary_frame = cv2.medianBlur(gray_frame, 5)
+            gray_frame = cv2.GaussianBlur(gray_frame, (5, 5), 0)
 
         prev_means, prev_vars, prev_ages = self.statistical_models.get_models()
         H = self.homography_calculator.RunTrack(gray_frame)
@@ -68,4 +67,3 @@ class ForegroundEstimetor:
 
     def __call__(self, gray_frame):
         return self.get_foreground(gray_frame)
-
