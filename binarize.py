@@ -60,13 +60,13 @@ class DilateErodeDynamicBinarizer(DilateErodeBinarizer):
 class NormalizedDilateErodeBinarizer(DilateErodeBinarizer):
     def __init__(self, diff_frame_threshold: int = 150, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
                  dilate_kwargs: dict = None, erode_kwargs: dict = None):
-        super(NormalizedDilateErodeBinarizer, self).__init__(diff_frame_threshold, dilate_kernel_size,
-                                                             erode_kernel_size, dilate_kwargs, erode_kwargs)
+        super(NormalizedDilateErodeBinarizer, self).__init__(diff_frame_threshold, dilate_kernel_size, erode_kernel_size,
+                                                          dilate_kwargs, erode_kwargs)
 
-    def __call__(self, frame):
-        foreground = frame.astype(np.float)
-        min_larger_then_zero = min(i for i in foreground.flatten() if i > 0)
-        foreground[foreground == 0] = min_larger_then_zero
+    def __call__(self, gray_frame):
+        if not np.any(gray_frame):
+            return gray_frame
+        foreground = gray_frame.astype(np.float)
         foreground = (foreground - np.min(foreground)) / (np.max(foreground) - np.min(foreground)) * 255
         foreground = gammaCorrection(foreground.astype(np.uint8), 2.2)
         return super(NormalizedDilateErodeBinarizer, self).__call__(foreground.astype(np.uint8))

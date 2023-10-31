@@ -28,6 +28,8 @@ var/
 wheels/
 share/python-wheels/
 *.egg-info/
+MovingCameraVMD/
+fastMCD_master/
 .installed.cfg
 *.egg
 MANIFEST
