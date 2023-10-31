@@ -3,6 +3,9 @@ import cv2
 import itertools
 
 class KLTWrapper:
+    """
+    homography calculator, almost identical to original code
+    """
     def __init__(self, win_size=10):
         self.win_size = win_size
         self.count = 0
@@ -19,7 +22,6 @@ class KLTWrapper:
         self.points1 = None
 
     def init(self, imgGray):
-
         (nj, ni) = imgGray.shape
 
         self.MAX_COUNT = (float(ni) / self.GRID_SIZE_W + 1.0) * (float(nj) / self.GRID_SIZE_H + 1.0)

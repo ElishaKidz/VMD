@@ -5,7 +5,13 @@ import scipy
 
 
 class BaseModel:
+    """
+    prenet class for the compensation model and the statistics model
+    """
     def __init__(self, num_models, model_height, model_width, block_size, var_init, var_trim):
+        """
+        see foreground model init for documentation
+        """
         self.prev_means = None
         self.vars = None
         self.ages = None
@@ -16,12 +22,18 @@ class BaseModel:
         self.var_init = var_init
         self.var_trim = var_trim
 
-    def init(self, gray_frame):
+    def init(self):
+        """
+        create zero params of size of the models and the grids
+        """
         self.means = np.zeros((self.num_models, self.model_height, self.model_width))
         self.vars = np.zeros((self.num_models, self.model_height, self.model_width))
         self.ages = np.zeros((self.num_models, self.model_height, self.model_width))
 
     def get_models(self):
+        """
+        :return: means vars and ages of models
+        """
         return self.means, self.vars, self.ages
 
 
@@ -31,8 +43,8 @@ class CompensationModel(BaseModel):
         self.lam = lam
         self.theta_v = theta_v
 
-    def init(self, gray_frame, means, vars, ages):
-        super(CompensationModel, self).init(gray_frame)
+    def init(self, means, vars, ages):
+        super(CompensationModel, self).init()
         H = np.identity(3)
         return self.compensate(H,  means, vars, ages)
 
@@ -65,6 +77,26 @@ class CompensationModel(BaseModel):
 
     def compensate_mean_and_age(self, temp_means, temp_ages, prev_means, prev_ages, W, W_H, W_V, W_HV, W_self,
                                 x_grid_coords, y_grid_coords, prev_grid_coords_x, prev_grid_coords_y, offset_x, offset_y):
+        """
+        compensate the means and the ages of the model
+        :param temp_means: where to temporarly store the compenated means
+        :param temp_ages: same for ages
+        :param prev_means: means of models in previous iterations
+        :param prev_ages: same for ages
+        :param W: sum of all weights
+        :param W_H: horizontal weight
+        :param W_V: vertical weight
+        :param W_HV: diagonal weight
+        :param W_self: weight of closest grid
+        :param x_grid_coords: x grid coords from utils.get_grid_coords
+        :param y_grid_coords: same for y
+        :param prev_grid_coords_x: previouse coordinates of the grid
+        :param prev_grid_coords_y: same for y
+        :param offset_x: offset of grid's center from the prev to curr frame X
+        :param offset_y: same for y
+        :return: updated and compensated W, temp_means, temp_ages and conditions for update cond_horizontal,
+        cond_vertical, cond_diagonal, cond_self for updating variance so not calc them again
+        """
         x_overlap_idx = prev_grid_coords_x + np.sign(offset_x).astype(int)  # figure out X direction of jumping, taking the overlaping center index in X
         cond_horizontal = (prev_grid_coords_y >= 0) & (prev_grid_coords_y < self.model_height) & (
                     x_overlap_idx >= 0) & (
@@ -119,6 +151,14 @@ class CompensationModel(BaseModel):
 
 
     def compensate(self, H, prev_means, prev_vars, prev_ages):
+        """
+        compensate the models
+        :param H: homography matrix
+        :param prev_means: the final means from prev iteration
+        :param prev_vars: same for variance
+        :param prev_ages: same for ages
+        :return: compensated model
+        """
         x_grid_coords, y_grid_coords = utils.get_grid_coords(self.model_width, self.model_height)
 
         points = np.asarray([x_grid_coords * self.block_size + self.block_size / 2, y_grid_coords * self.block_size +
@@ -202,6 +242,10 @@ class CompensationModel(BaseModel):
 
 
 class StatisticalModel(BaseModel):
+    """
+    statistical model that is responsible to decide each models to updates according to eq (1) (2) (3) and
+    choose foreground
+    """
     def __init__(self, num_models, model_height, model_width, block_size, var_init, var_trim, age_trim, theta_s, theta_d=4,
                  calc_probs=False, sensetivity=False):
         super(StatisticalModel, self).__init__(num_models, model_height, model_width, block_size, var_init, var_trim)
@@ -211,8 +255,8 @@ class StatisticalModel(BaseModel):
         self.calc_probs = calc_probs
         self.sensetivity = sensetivity
 
-    def init(self, gray_frame):
-        super(StatisticalModel, self).init(gray_frame)
+    def init(self):
+        super(StatisticalModel, self).init()
 
     @staticmethod
     def rebinMean(arr, factor):
@@ -230,6 +274,12 @@ class StatisticalModel(BaseModel):
 
     @staticmethod
     def get_alpha(com_ages, models_to_update):
+        """
+        calc couficient of the paper
+        :param com_ages: compensated ages
+        :param models_to_update:  the indexes of the chosen models to update
+        :return: cofficient
+        """
         alpha = com_ages / (com_ages + 1)
         alpha[com_ages < 1] = 0
         alpha[~models_to_update] = 1
@@ -237,6 +287,14 @@ class StatisticalModel(BaseModel):
 
     @staticmethod
     def calc_probability(gray, big_mean, big_vars, big_ages):
+        """
+        calc probability of pixels to be foreground
+        :param gray: gray image
+        :param big_mean: each pixel has the value of the mean of its grid
+        :param big_vars: same for vars
+        :param big_ages: same for ages
+        :return: probabilities
+        """
         cdf = scipy.stats.norm(loc=big_mean, scale=np.sqrt(big_vars)).cdf(gray)
         reverse_cdf = 1 - cdf
         out = np.maximum(cdf, reverse_cdf)
@@ -247,12 +305,25 @@ class StatisticalModel(BaseModel):
 
     @staticmethod
     def calc_by_thresh(gray, big_means, big_vars, big_ages, theta):
+        """
+        decide each pixels are foreground by thresholding as in eq (16)
+        :param theta: the threshold
+        :return: foreground-background matrix
+        """
         dist_img = np.power(gray - big_means, 2)
         out = np.zeros(gray.shape).astype(np.uint8)
         out[(big_ages > 1) & (dist_img > theta * big_vars)] = 255
         return out
 
     def choose_models_for_update(self, cur_mean, com_means, com_vars, com_ages):
+        """
+        chose models for updating
+        :param cur_mean:
+        :param com_means:
+        :param com_vars:
+        :param com_ages:
+        :return:
+        """
         models_with_max_age = self.num_models - np.argmax(com_ages[::-1], axis=0).reshape(-1) - 1  # find maximums of ages
         maxes = np.max(com_ages, axis=0)
         h, w = self.model_height, self.model_width
