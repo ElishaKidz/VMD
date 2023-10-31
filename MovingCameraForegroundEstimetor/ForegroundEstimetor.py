@@ -1,11 +1,12 @@
 import numpy as np
 from VMD.MovingCameraForegroundEstimetor.MathematicalModels import CompensationModel, StatisticalModel
 from VMD.MovingCameraForegroundEstimetor.KLTWrapper import KLTWrapper
+import cv2
 
 
 class ForegroundEstimetor:
-    def __init__(self, num_models=2, block_size=4, var_init=20*20, var_trim=5*5, lam=0.001, theta_v=50*50, age_trim=30,
-                 theta_s=2, theta_d=4, sensetivity=False, smooth=False):
+    def __init__(self, num_models=2, block_size=4, var_init=20.0*20.0, var_trim=5.0*5.0, lam=0.001, theta_v=50.0*50.0,
+                 age_trim=30, theta_s=2, theta_d=2, calc_probs=True, sensetivity="mixed", smooth=True):
         self.is_first = True
 
         self.homography_calculator = KLTWrapper()
@@ -23,6 +24,7 @@ class ForegroundEstimetor:
         self.age_trim = age_trim
         self.theta_s = theta_s
         self.theta_d = theta_d
+        self.calc_probs = calc_probs
         self.sensetivity = sensetivity
         self.smooth = smooth
 
@@ -39,7 +41,7 @@ class ForegroundEstimetor:
                                                      self.theta_v)
         self.statistical_models = StatisticalModel(self.num_models, self.model_height, self.model_width,
                                                    self.block_size, self.var_init, self.var_trim, self.age_trim,
-                                                   self.theta_s, self.theta_d, self.sensetivity)
+                                                   self.theta_s, self.theta_d, self.calc_probs, self.sensetivity)
 
         self.homography_calculator.init(gray_frame)
 
@@ -51,11 +53,12 @@ class ForegroundEstimetor:
         return self.statistical_models.get_foreground(gray_frame, com_means, com_vars, com_ages)
 
     def get_foreground(self, gray_frame):
-        if self.smooth:
-            gray_frame = self.imgGray = cv2.GaussianBlur(gray_frame, (5, 5), 0)
-
         if self.is_first:
             return self.first_pass(gray_frame)
+
+        if self.smooth:
+            gary_frame = cv2.medianBlur(gray_frame, 5)
+            gray_frame = cv2.GaussianBlur(gray_frame, (7, 7), 0)
 
         prev_means, prev_vars, prev_ages = self.statistical_models.get_models()
         H = self.homography_calculator.RunTrack(gray_frame)

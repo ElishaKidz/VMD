@@ -5,11 +5,11 @@ import itertools
 
 class ProbModel:
     def __init__(self):
-        self.NUM_MODELS = 2
-        self.BLOCK_SIZE	= 16
+        self.NUM_MODELS = 3
+        self.BLOCK_SIZE	= 4
         self.VAR_THRESH_MODEL_MATCH = 2
         self.MAX_BG_AGE = 30
-        self.VAR_THRESH_FG_DETERMINE = 2.0  # 4.0
+        self.VAR_THRESH_FG_DETERMINE = 10.0  # 4.0
         self.INIT_BG_VAR = 20.0*20.0
         self.MIN_BG_VAR = 5 * 5
         self.means = None
