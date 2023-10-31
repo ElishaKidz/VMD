@@ -103,12 +103,8 @@ if __name__ == '__main__':
     video_cap = create_video_capture(args.video_path)
 
     vmd = VMD(args.config_path,args.run_parallelly)
-    start_time = time.time()
     if not args.run_parallelly:
         main(vmd, video_cap, args.bbox_save_path, args.rendered_video_save_path, args.frame_limit)
 
     else:
         asyncio.run(parallel_main(vmd, video_cap, args.bbox_save_path, args.rendered_video_save_path, args.frame_limit))
-    
-    end_time = time.time()
-    print(f"it took {end_time-start_time} to execute")
