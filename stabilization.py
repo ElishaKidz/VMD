@@ -1,6 +1,6 @@
 import cv2 as cv
 import numpy as np
-from fastMCD_master.KLTWrapper import KLTWrapper
+from VMD.fastMCD_master.KLTWrapper import KLTWrapper
 import cv2
 
 stabilizers = {}
