@@ -318,11 +318,11 @@ class StatisticalModel(BaseModel):
     def choose_models_for_update(self, cur_mean, com_means, com_vars, com_ages):
         """
         chose models for updating
-        :param cur_mean:
-        :param com_means:
-        :param com_vars:
-        :param com_ages:
-        :return:
+        :param cur_mean:   each pixel containes the current (observable) mean of its grid
+        :param com_means:   compensated means
+        :param com_vars:    compensated vars
+        :param com_ages:    compensated ages
+        :return: the chosen models for updating
         """
         models_with_max_age = self.num_models - np.argmax(com_ages[::-1], axis=0).reshape(-1) - 1  # find maximums of ages
         maxes = np.max(com_ages, axis=0)
@@ -355,9 +355,23 @@ class StatisticalModel(BaseModel):
         return models_to_update, model_index
 
     def update_means(self, com_means, alpha, cur_mean):
+        """
+        update the means according to eq (1)
+        :param com_means: compensated means
+        :param alpha: the cofficient of mu in eq (1): a_com(t-1) / [a_com(t-1) + 1]
+        :param cur_mean: the current mean as explained before
+        """
         self.means = com_means * alpha + cur_mean * (1 - alpha)    # update mean
 
     def update_vars(self, com_vars, alpha, gray_image, models_to_update, model_index):
+        """
+        update the variance accoring to eq (2)
+        :param com_vars: compensated vars
+        :param alpha: the cofficient of mu in eq (1): a_com(t-1) / [a_com(t-1) + 1]
+        :param gray_image: the image
+        :param models_to_update: first output of "choose_models_to_update"
+        :param model_index: second output of "choose_models_to_update"
+        """
         h, w = self.model_height, self.model_width
         jj, ii = np.arange(h * w) // w, np.arange(h * w) % w
         big_mean_index = np.kron(self.means[model_index.reshape(-1), jj, ii].reshape(self.model_height, -1),
@@ -370,11 +384,26 @@ class StatisticalModel(BaseModel):
         self.vars[(self.vars < self.var_trim) & models_to_update] = self.var_trim
 
     def update_ages(self, com_ages, models_to_update):
+        """
+        update ages according to eq (3)
+        :param com_ages: compensated ages
+        :param models_to_update: first output of "choose_models_to_update"
+        """
         self.ages = com_ages.copy()
         self.ages[models_to_update] += 1
         self.ages[models_to_update & (self.ages > self.age_trim)] = self.age_trim
 
     def update_models(self, gray_image, models_to_update, model_index, cur_mean, com_means, com_vars, com_ages):
+        """
+        update means, vars and ages of models according to eq (1) (2) (3)
+        :param gray_image: image
+        :param models_to_update: first output of "choose_models_to_update"
+        :param model_index: second output of "choose_models_to_update"
+        :param cur_mean: each pixel containes the current (observable) mean of its grid
+        :param com_means: compensated means
+        :param com_vars: compensated vars
+        :param com_ages: compensated ages
+        """
         # calculate coefficients
         alpha = StatisticalModel.get_alpha(com_ages, models_to_update)
         self.update_means(com_means, alpha, cur_mean)
@@ -384,6 +413,17 @@ class StatisticalModel(BaseModel):
         self.update_ages(com_ages, models_to_update)
 
     def mix_updating_and_foreground(self, gray, models_to_update, model_index, cur_mean, com_means, com_vars, com_ages):
+        """
+        uodate means, then choose foreground, then update vars and ages
+        :param gray: image
+        :param models_to_update: first output of "choose_models_to_update"
+        :param model_index: second output of "choose_models_to_update"
+        :param cur_mean: each pixel containes the current (observable) mean of its grid
+        :param com_means: compensated means
+        :param com_vars: compensated vars
+        :param com_ages: compensated ages
+        :return: chosen pixels to be foreground
+        """
         alpha = StatisticalModel.get_alpha(com_ages, models_to_update)
         self.update_means(com_means, alpha,cur_mean)
         out = self.choose_foreground(gray, com_means, com_vars, com_ages)
@@ -392,6 +432,14 @@ class StatisticalModel(BaseModel):
         return out
 
     def choose_foreground(self, gray, com_means, com_vars, com_ages):
+        """
+        select foreground pixels
+        :param gray: image
+        :param com_means: compensated means
+        :param com_vars: compensated vars
+        :param com_ages: compensated ages
+        :return: chosen foreground pixels
+        """
         big_mean = np.kron(self.means[0], np.ones((self.block_size, self.block_size)))  # current appearing mean extended as previouse
         big_ages = np.kron(self.ages[0], np.ones((self.block_size, self.block_size)))  # same for ages
         big_vars = np.kron(self.vars[0], np.ones((self.block_size, self.block_size)))  # same for vars
@@ -402,6 +450,14 @@ class StatisticalModel(BaseModel):
         return out
 
     def get_foreground(self, gray, com_means, com_vars, com_ages):
+        """
+        update models and choosing foreground
+        :param gray: image
+        :param com_means: compensated means
+        :param com_vars: compensated vars
+        :param com_ages: compensated ages
+        :return: chosen foreground pixels
+        """
         cur_mean = StatisticalModel.rebinMean(gray, (self.block_size, self.block_size))  # calc each grid mean to decide which model to update, aka calculate M(t)
         models_to_update, model_index = self.choose_models_for_update(cur_mean, com_means, com_vars, com_ages)
         if self.sensetivity == "mixed":
