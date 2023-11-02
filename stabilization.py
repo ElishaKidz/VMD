@@ -95,7 +95,7 @@ class KLTStabilization(OpticalFlowStabilization):
 
 @register("NoStability")
 class NoStability:
-    def __init__(self):
+    def __init__(self, no_stability):
         pass
 
     def __call__(self, single_channel_frame):

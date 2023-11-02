@@ -22,7 +22,7 @@ def main(vmd_obj, video_cap, save_detections_file=None, rendered_video_file_path
 
     if save_detections_file is not None:
         video_bboxes_df.to_csv(save_detections_file)
-
+    
     if rendered_video_file_path is not None:
         bbox_col_names = vmd_obj.bbox_creator_obj.bbox_col_names
         bbox_foramt = vmd_obj.bbox_creator_obj.bbox_format
