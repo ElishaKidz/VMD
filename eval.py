@@ -1,0 +1,111 @@
+import cv2 as cv
+from vmd import VMD
+import pandas as pd
+from SoiUtils.video_manipulations import draw_video_from_bool_csv
+from SoiUtils.load import create_video_capture
+from vmd import VMD
+import gcsfs
+from pycocotools.coco import COCO
+import numpy as np
+import pybboxes as pbx
+
+fs = gcsfs.GCSFileSystem(project="mod-gcp-white-soi-dev-1")
+
+def get_video_dfs(video_dir, vmd_obj, bbox_col_names, bbox_format):
+    pred_bboxes = []
+    gt_bboxes = []
+    fs.get(f"{video_dir}/annotations.json", "annotations.json")
+    frames_bboxes_gt = COCO("annotations.json").imgToAnns
+    for frame_path in fs.ls(f"{video_dir}/frames"):
+            frame_id = int(frame_path.split("/")[-1].split("_")[1].split(".")[0]) + 1
+            ###################### for debug only
+            if frame_id > 200:
+                break
+            ######################
+            frame = np.asarray(bytearray(fs.open(frame_path, "rb").read()), dtype="uint8")
+            frame = cv.imdecode(frame, cv.IMREAD_COLOR)
+            
+            frame_bboxes = vmd_obj(frame)
+            frame_bboxes = frame_bboxes.assign(frame_id=frame_id)
+            frame_bboxes = frame_bboxes.assign(video_file=video_dir)
+            pred_bboxes.append(frame_bboxes)
+            
+            if frame_id in frames_bboxes_gt:
+                for ann in frames_bboxes_gt[frame_id]: # need to check
+                    bbox = list(pbx.convert_bbox(ann["bbox"], from_type="coco", to_type=bbox_format))
+                    frame_bboxes_gt = {col_name: value for col_name, value in zip(bbox_col_names, bbox)}
+                    frame_bboxes_gt['frame_id'] = frame_id
+                    frame_bboxes_gt['video_file'] = video_dir
+                    gt_bboxes.append(frame_bboxes_gt)
+
+    return pd.concat(pred_bboxes), pd.DataFrame(gt_bboxes)
+
+def get_precision_recall(pred_bboxes, gt_bboxes, iou_threshold=0.5):
+    pred_bboxes = [pbx.BoundingBox.from_coco(*bbox) for bbox in pred_bboxes] if len(pred_bboxes) > 0 else []
+    gt_bboxes = [pbx.BoundingBox.from_coco(*bbox) for bbox in gt_bboxes] if len(gt_bboxes) > 0 else []
+
+    ious = []
+    for pred_bbox in pred_bboxes:
+        for gt_bbox in gt_bboxes:
+            ious.append(pred_bbox.iou(gt_bbox))
+    
+    hits = (np.array(ious) > iou_threshold).sum()
+    precision = hits / len(gt_bboxes) if len(gt_bboxes) > 0 else 0
+    recall = hits / len(pred_bboxes) if len(pred_bboxes) > 0 else 0
+
+    return precision, recall
+
+def eval_video(pred_bboxes_df, gt_bboxes_df, bbox_col_names):
+    frames_with_bboxes = set(pred_bboxes_df["frame_id"].values).union(set(gt_bboxes_df["frame_id"].values))
+    sum_precision, sum_recall = 0, 0
+    for frame_id in frames_with_bboxes:
+        frame_pred_bboxes = pred_bboxes_df.loc[pred_bboxes_df["frame_id"] == frame_id][bbox_col_names].values.tolist()
+        frame_gt_bboxes = gt_bboxes_df.loc[gt_bboxes_df["frame_id"] == frame_id][bbox_col_names].values.tolist()
+        frame_precision, frame_recall = get_precision_recall(frame_pred_bboxes, frame_gt_bboxes)
+        
+        sum_precision += frame_precision
+        sum_recall += frame_recall
+
+    return sum_precision / len(frames_with_bboxes), sum_recall / len(frames_with_bboxes)
+
+def main(vmd_obj, remote_dir, save_detections_file=None, rendered_videos_dir_path=None):
+    bbox_col_names = vmd_obj.bbox_creator_obj.bbox_col_names
+    bbox_format = vmd_obj.bbox_creator_obj.bbox_format
+    
+    pred_bboxes_df = pd.DataFrame({})
+    gt_bboxes_df = pd.DataFrame({})
+    
+    for video_dir in fs.ls(remote_dir)[1:]:
+        video_pred_bboxes, video_gt_bboxes = get_video_dfs(video_dir, vmd_obj, bbox_col_names, bbox_format)
+        video_precision, video_recall = eval_video(video_pred_bboxes, video_gt_bboxes, bbox_col_names)
+        print(video_precision)
+        print(video_recall)
+
+        # if rendered_videos_dir_path is not None:
+        #     video_cap.set(cv.CAP_PROP_POS_FRAMES, 0)
+        #     draw_video_from_bool_csv(video_cap, video_pred_bboxes_df, bbox_cols_names=bbox_col_names,
+        #                             output_video_path=f"{rendered_videos_dir_path}/{video_dir}", bbox_foramt=bbox_foramt)
+        
+        pred_bboxes_df = pd.concat([video_pred_bboxes, pred_bboxes_df])
+        gt_bboxes_df = pd.concat([video_gt_bboxes, gt_bboxes_df])
+
+    # if save_detections_file is not None:
+    #     pred_bboxes_df.to_csv(f"{save_detections_file}/pred.csv")
+    #     gt_bboxes_df.to_csv(f"{save_detections_file}/gt.csv")
+    
+    return pred_bboxes_df, gt_bboxes_df
+
+if __name__ == '__main__':
+    from pathlib import Path
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument('--remote_dir', type=str, default="soi_experiments/annotations-example/")
+    parser.add_argument('--config_path', type=str, default=Path('configs/default.yaml'))
+    parser.add_argument('--bbox_save_dir', type=str, default=Path('outputs/bboxes/result.csv'))
+    parser.add_argument('--rendered_videos_dir', type=str, default=Path('outputs/videos/result.mp4'))
+    
+    args = parser.parse_args()
+
+    vmd = VMD(args.config_path)
+    main(vmd, args.remote_dir, args.bbox_save_dir, args.rendered_videos_dir)
