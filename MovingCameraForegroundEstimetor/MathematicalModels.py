@@ -30,6 +30,7 @@ class BaseModel:
         self.vars = np.zeros((self.num_models, self.model_height, self.model_width))
         self.ages = np.zeros((self.num_models, self.model_height, self.model_width))
 
+
     def get_models(self):
         """
         :return: means vars and ages of models
@@ -255,8 +256,13 @@ class StatisticalModel(BaseModel):
         self.calc_probs = calc_probs
         self.sensetivity = sensetivity
 
+        self.temporal_property = None
+        self.spatial_property = None
+
     def init(self):
         super(StatisticalModel, self).init()
+        self.temporal_property = np.zeros((self.model_height * self.block_size, self.model_width * self.block_size))
+        self.spatial_property = np.zeros((self.model_height * self.block_size, self.model_width * self.block_size))
 
     @staticmethod
     def rebinMean(arr, factor):
@@ -285,22 +291,18 @@ class StatisticalModel(BaseModel):
         alpha[~models_to_update] = 1
         return alpha
 
-    @staticmethod
-    def calc_probability(gray, big_mean, big_vars, big_ages):
-        """
-        calc probability of pixels to be foreground
-        :param gray: gray image
-        :param big_mean: each pixel has the value of the mean of its grid
-        :param big_vars: same for vars
-        :param big_ages: same for ages
-        :return: probabilities
-        """
-        cdf = scipy.stats.norm(loc=big_mean, scale=np.sqrt(big_vars)).cdf(gray)
-        reverse_cdf = 1 - cdf
-        out = np.maximum(cdf, reverse_cdf)
-        out[big_ages <= 1] = 0.5
-        out *= 255
-        out = out.astype(np.uint8)
+    def calc_probability(self, gray, det, com_ages):
+        alpha = StatisticalModel.get_alpha(com_ages, self.models_to_update)[0]
+        alpha = np.repeat(np.repeat(alpha, self.block_size, axis=0), self.block_size, axis=1)
+        neighborhood_size = (5, 5)
+        kernel = np.ones(neighborhood_size) / np.prod(neighborhood_size)
+        alpha = 0.3
+
+        self.temporal_property = alpha * self.temporal_property + (1-alpha) * det / 255
+        self.spatial_property = alpha * self.spatial_property + (1-alpha) * \
+                                scipy.signal.convolve2d(gray / 255, kernel, mode='same')
+        probs = self.temporal_property *  self.spatial_property
+        out = (probs * 255).astype(np.uint8)
         return out
 
     @staticmethod
@@ -352,6 +354,7 @@ class StatisticalModel(BaseModel):
 
         models_to_update = np.arange(self.means.shape[0]).reshape(-1, 1,
                                                                 1) == model_index  # which model to take as a 3d matrix with trues and falses in the entries
+        self.models_to_update = models_to_update
         return models_to_update, model_index
 
     def update_means(self, com_means, alpha, cur_mean):
@@ -444,7 +447,8 @@ class StatisticalModel(BaseModel):
         big_ages = np.kron(self.ages[0], np.ones((self.block_size, self.block_size)))  # same for ages
         big_vars = np.kron(self.vars[0], np.ones((self.block_size, self.block_size)))  # same for vars
         if self.calc_probs:
-            return StatisticalModel.calc_probability(gray, big_mean, big_vars, big_ages)
+            det = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
+            return self.calc_probability(gray, det, com_ages)
         else:
             return StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
         return out
@@ -470,5 +474,3 @@ class StatisticalModel(BaseModel):
             self.update_models(gray, models_to_update, model_index, cur_mean, com_means, com_vars, com_ages)
             out = self.choose_foreground(gray, com_means, com_vars, com_ages)
         return out
-
-

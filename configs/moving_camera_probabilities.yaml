@@ -21,7 +21,7 @@ detector:
 foreground_estimator:
   foreground_estimator_name: 'MovingCameraForegroundEstimetor'
   foreground_estimator_params:
-    num_models: 2
+    num_models: 3
     block_size: 4
     var_init: 400.0
     var_trim: 25.0
@@ -30,6 +30,6 @@ foreground_estimator:
     age_trim: 30
     theta_s: 2
     theta_d: 10
-    calc_probs: False
+    calc_probs: True
     sensetivity: "mixed"  # 'mixed' , True or False
     smooth: True
