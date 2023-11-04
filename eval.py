@@ -17,24 +17,24 @@ def get_video_dfs(video_dir, vmd_obj, bbox_col_names, bbox_format):
     fs.get(f"{video_dir}/annotations.json", "annotations.json")
     frames_bboxes_gt = COCO("annotations.json").imgToAnns
     for frame_path in fs.ls(f"{video_dir}/frames"):
-            frame_id = int(frame_path.split("/")[-1].split("_")[1].split(".")[0]) + 1
+            frame_num = int(frame_path.split("/")[-1].split("_")[1].split(".")[0]) + 1
             ###################### for debug only
-            if frame_id > 200:
+            if frame_num > args.frame_limit:
                 break
             ######################
             frame = np.asarray(bytearray(fs.open(frame_path, "rb").read()), dtype="uint8")
             frame = cv.imdecode(frame, cv.IMREAD_COLOR)
             
             frame_bboxes = vmd_obj(frame)
-            frame_bboxes = frame_bboxes.assign(frame_num=frame_id)
+            frame_bboxes = frame_bboxes.assign(frame_num=frame_num)
             frame_bboxes = frame_bboxes.assign(video_file=video_dir)
             pred_bboxes.append(frame_bboxes)
             
-            if frame_id in frames_bboxes_gt:
-                for ann in frames_bboxes_gt[frame_id]: # need to check
+            if frame_num in frames_bboxes_gt:
+                for ann in frames_bboxes_gt[frame_num]: # need to check
                     bbox = list(pbx.convert_bbox(ann["bbox"], from_type="coco", to_type=bbox_format, image_size=frame.shape[:2][::-1]))
                     frame_bboxes_gt = {col_name: value for col_name, value in zip(bbox_col_names, bbox)}
-                    frame_bboxes_gt['frame_num'] = frame_id
+                    frame_bboxes_gt['frame_num'] = frame_num
                     frame_bboxes_gt['video_file'] = video_dir
                     gt_bboxes.append(frame_bboxes_gt)
 
@@ -76,6 +76,8 @@ def main(vmd_obj, remote_dir, save_detections_dir=None, rendered_videos_dir_path
     gt_bboxes_df = pd.DataFrame({})
     
     for video_dir in fs.ls(remote_dir)[1:]:
+        if video_dir.split("/")[-1] in ignored_videos:
+            continue
         video_pred_bboxes, video_gt_bboxes = get_video_dfs(video_dir, vmd_obj, bbox_col_names, bbox_format)
         video_precision, video_recall, number_of_frames_with_bbox = eval_video(video_pred_bboxes, video_gt_bboxes, bbox_col_names)
         print(f"{video_dir} Precision: {video_precision / number_of_frames_with_bbox}")
@@ -107,8 +109,11 @@ if __name__ == '__main__':
     parser.add_argument('--config_path', type=str, default=Path('configs/default.yaml'))
     parser.add_argument('--bbox_save_dir', type=str, default=Path('outputs/bboxes'))
     parser.add_argument('--rendered_videos_dir', type=str, default=Path('outputs/videos'))
-    
+    parser.add_argument('--ignored_videos', type=str, default="")
+    parser.add_argument('--frame_limit', type=int, default=500)
     args = parser.parse_args()
+
+    ignored_videos = args.ignored_videos.split(",")
 
     vmd = VMD(args.config_path)
     main(vmd, args.remote_dir, args.bbox_save_dir, args.rendered_videos_dir)
