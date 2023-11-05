@@ -1,6 +1,6 @@
 import numpy as np
-from MovingCameraForegroundEstimetor.MathematicalModels import CompensationModel, StatisticalModel
-from MovingCameraForegroundEstimetor.KLTWrapper import KLTWrapper
+from VMD.MovingCameraForegroundEstimetor.MathematicalModels import CompensationModel, StatisticalModel
+from VMD.MovingCameraForegroundEstimetor.KLTWrapper import KLTWrapper
 import cv2
 
 
