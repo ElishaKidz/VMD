@@ -1,9 +1,8 @@
 import cv2 as cv
-from vmd import VMD
 import pandas as pd
 from SoiUtils.video_manipulations import draw_video_from_bool_csv
 from SoiUtils.load import create_video_capture
-from vmd import VMD
+from VMD.vmd import VMD
 import gcsfs
 from pycocotools.coco import COCO
 import numpy as np

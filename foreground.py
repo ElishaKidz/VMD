@@ -1,7 +1,7 @@
 import numpy as np
 import cv2 as cv
 from skimage.util import view_as_windows
-from MovingCameraForegroundEstimetor.ForegroundEstimetor import ForegroundEstimetor
+from VMD.MovingCameraForegroundEstimetor.ForegroundEstimetor import ForegroundEstimetor
 foreground_estimators = {}
 
 
