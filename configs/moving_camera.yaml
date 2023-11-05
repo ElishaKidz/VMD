@@ -5,8 +5,10 @@ stabilizer:
 
 
 binarizer:
-  binarizer_name: 'NormalizedDilateErodeBinarizer'
+  binarizer_name: 'FrameSuppresionDilateErodeBinarizer'
   binarizer_params:
+    erode_kernel_size: [3, 3]
+    thickness: 3
     dilate_kwargs:
       iterations: 1
 
@@ -29,7 +31,7 @@ foreground_estimator:
     theta_v: 2500.0
     age_trim: 30
     theta_s: 2
-    theta_d: 10
+    theta_d: 4
     calc_probs: False
     sensetivity: "mixed"  # 'mixed' , True or False
     smooth: True

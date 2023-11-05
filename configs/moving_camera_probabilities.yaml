@@ -7,6 +7,7 @@ stabilizer:
 binarizer:
   binarizer_name: 'NormalizedDilateErodeBinarizer'
   binarizer_params:
+    erode_kernel_size: [5, 5]
     dilate_kwargs:
       iterations: 1
 
@@ -21,7 +22,7 @@ detector:
 foreground_estimator:
   foreground_estimator_name: 'MovingCameraForegroundEstimetor'
   foreground_estimator_params:
-    num_models: 3
+    num_models: 2
     block_size: 4
     var_init: 400.0
     var_trim: 25.0
@@ -29,7 +30,7 @@ foreground_estimator:
     theta_v: 2500.0
     age_trim: 30
     theta_s: 2
-    theta_d: 10
+    theta_d: 4
     calc_probs: True
     sensetivity: "mixed"  # 'mixed' , True or False
     smooth: True
