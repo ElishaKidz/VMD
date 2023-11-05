@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-from VMD.MovingCameraForegroundEstimetor import utils
+from MovingCameraForegroundEstimetor import utils
 import scipy
 
 

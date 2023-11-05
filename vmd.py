@@ -2,10 +2,10 @@ import numpy as np
 import pandas as pd
 import cv2 as cv
 import logging
-from VMD.binarize import binarizers
-from VMD.detections import detectors
-from VMD.stabilization import stabilizers
-from VMD.foreground import foreground_estimators
+from binarize import binarizers
+from detections import detectors
+from stabilization import stabilizers
+from foreground import foreground_estimators
 from SoiUtils.load import load_yaml
 
 class VMD:
