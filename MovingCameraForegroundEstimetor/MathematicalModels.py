@@ -247,13 +247,16 @@ class StatisticalModel(BaseModel):
     choose foreground
     """
     def __init__(self, num_models, model_height, model_width, block_size, var_init, var_trim, age_trim, theta_s, theta_d=4,
-                 calc_probs=False, sensetivity=False):
+                 dynamic=False, calc_probs=False, sensetivity=False):
         super(StatisticalModel, self).__init__(num_models, model_height, model_width, block_size, var_init, var_trim)
         self.age_trim = age_trim
         self.theta_s = theta_s
         self.theta_d = theta_d
+        self.matrix_theta_d = None
+        self.dynamic = dynamic
         self.calc_probs = calc_probs
         self.sensetivity = sensetivity
+
 
     def init(self):
         super(StatisticalModel, self).init()
@@ -444,9 +447,15 @@ class StatisticalModel(BaseModel):
         big_ages = np.kron(self.ages[0], np.ones((self.block_size, self.block_size)))  # same for ages
         big_vars = np.kron(self.vars[0], np.ones((self.block_size, self.block_size)))  # same for vars
         if self.calc_probs:
-            return StatisticalModel.calc_probability(gray, big_mean, big_vars, big_ages)
+            out = StatisticalModel.calc_probability(gray, big_mean, big_vars, big_ages)
         else:
-            return StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
+            self.matrix_theta_d = np.ones(gray.shape) * self.theta_d
+            if self.dynamic:
+                self.matrix_theta_d += (((np.max(gray) - gray) / np.max(gray))**2) * 13
+            out = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.matrix_theta_d)
+        mn = np.mean(gray)
+        std = np.std(gray)
+        out[gray < mn + self.theta_d * std] = 0
         return out
 
     def get_foreground(self, gray, com_means, com_vars, com_ages):

@@ -10,7 +10,7 @@ class ForegroundEstimetor:
     probabilities for pixels tp be foreground
     """
     def __init__(self, num_models:int=2, block_size:int=4, var_init:float=20.0*20.0, var_trim:float=5.0*5.0,
-                 lam:float=0.001, theta_v:float=50.0*50.0, age_trim:float=30, theta_s=2, theta_d=2,
+                 lam:float=0.001, theta_v:float=50.0*50.0, age_trim:float=30, theta_s=2, theta_d=2, dynamic=False,
                  calc_probs=False, sensetivity="mixed", smooth=True):
         """
         :param num_models: number of models for each pixel to use, minimum possible value is 2
@@ -48,6 +48,8 @@ class ForegroundEstimetor:
         self.age_trim = age_trim
         self.theta_s = theta_s
         self.theta_d = theta_d
+        self.dynamic = dynamic
+
         self.calc_probs = calc_probs
         self.sensetivity = sensetivity
         self.smooth = smooth
@@ -70,7 +72,8 @@ class ForegroundEstimetor:
                                                      self.theta_v)
         self.statistical_models = StatisticalModel(self.num_models, self.model_height, self.model_width,
                                                    self.block_size, self.var_init, self.var_trim, self.age_trim,
-                                                   self.theta_s, self.theta_d, self.calc_probs, self.sensetivity)
+                                                   self.theta_s, self.theta_d, self.dynamic, self.calc_probs,
+                                                   self.sensetivity)
 
         # initialize homography calculator
         self.homography_calculator.init(gray_frame)

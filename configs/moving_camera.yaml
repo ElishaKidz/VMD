@@ -30,6 +30,7 @@ foreground_estimator:
     age_trim: 30
     theta_s: 2
     theta_d: 2
+    dynamic: False
     calc_probs: False
     sensetivity: "mixed"  # 'mixed' , True or False
-    smooth: True
+    smooth: False
