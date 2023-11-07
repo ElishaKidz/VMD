@@ -453,9 +453,9 @@ class StatisticalModel(BaseModel):
             if self.dynamic:
                 self.matrix_theta_d += (((np.max(gray) - gray) / np.max(gray))**2) * 13
             out = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.matrix_theta_d)
-        # mn = np.mean(gray)
-        # std = np.std(gray)
-        # out[gray < mn + np.sqrt(self.theta_d) * std] = 0
+        mn = np.mean(gray)
+        std = np.std(gray)
+        out[gray < mn + np.sqrt(self.theta_d) * std] = 0
         return out
 
     def get_foreground(self, gray, com_means, com_vars, com_ages):
