@@ -66,7 +66,7 @@ class NormalizedDilateErodeBinarizer(DilateErodeBinarizer):
     def __call__(self, gray_frame):
         if not np.any(gray_frame):
             return gray_frame
-        foreground = gray_frame.astype(np.float)
+        foreground = gray_frame.astype(np.float64)
         foreground = (foreground - np.min(foreground)) / (np.max(foreground) - np.min(foreground)) * 255
         foreground = gammaCorrection(foreground.astype(np.uint8), 2.2)
         return super(NormalizedDilateErodeBinarizer, self).__call__(foreground.astype(np.uint8))
