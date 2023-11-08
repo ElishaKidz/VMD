@@ -81,10 +81,6 @@ class PESMODForegroundEstimation():
             foreground = np.abs(np.transpose(background_patches, (2, 3, 0, 1)) - 
                                np.broadcast_to(frame, (filter_w, filter_h, w, h))).transpose((2, 3, 0 ,1)).reshape(w, h, -1).min(axis=2).astype(np.uint8)
 
-            mn = np.mean(frame)
-            std = np.std(frame)
-            foreground[frame < mn + std] = 0
-
             self.frames_history = np.append(self.frames_history,np.expand_dims(frame, axis=0), axis=0)
 
             if self.frames_history.shape[0]> self.num_frames:
