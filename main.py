@@ -31,6 +31,9 @@ def main(vmd_obj, video_cap, save_detections_file=None, rendered_video_file_path
                                  output_video_path=rendered_video_file_path, bbox_foramt=bbox_foramt,
                                  frame_limit=frame_limit)
 
+    print(f"avg vmd time {vmd_obj.times / vmd_obj.frame_counter}")
+    print(f"avg foreground time {vmd_obj.foreground_estimation_obj.times / vmd_obj.frame_counter}")
+
 
 if __name__ == '__main__':
     from pathlib import Path

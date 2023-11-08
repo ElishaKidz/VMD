@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import pandas as pd
 import cv2 as cv
@@ -13,6 +15,7 @@ class VMD:
         logging.basicConfig(level=logging.DEBUG)
 
         vmd_params = load_yaml(yaml_path)
+        self.times = 0
 
         self.video_stabilization_obj = stabilizers[vmd_params['stabilizer']['stabilizer_name']](**vmd_params['stabilizer'].get('stabilizer_params',{}))
         self.binary_frame_creator_obj = binarizers[vmd_params['binarizer']['binarizer_name']](**vmd_params['binarizer'].get('binarizer_params',{}))
@@ -22,6 +25,7 @@ class VMD:
 
     def __call__(self, frame):
         # the cv2 caption reads all frames defaultly as bgr therefore they are converted to gray.
+        s = time.time()
         frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
         stabilized_frame = self.video_stabilization_obj(frame)
@@ -30,4 +34,6 @@ class VMD:
         frame_bboxes = self.bbox_creator_obj(binary_foreground_estimation)
         logging.debug(f'frame number {self.frame_counter}')
         self.frame_counter += 1
+        e = time.time()
+        self.times += e - s
         return frame_bboxes

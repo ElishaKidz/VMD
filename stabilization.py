@@ -24,7 +24,6 @@ class OpticalFlowStabilization:
         self.rotation_matrix_buffer_size = rotation_matrix_buffer_size
 
     def __call__(self, single_channel_frame):
-
         rotation_mat = self.get_rotation_mat(frame=single_channel_frame)
 
         # Smooth the rotation matrix using a temporal filter.
