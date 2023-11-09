@@ -56,15 +56,21 @@ class MOG2():
 
 @register("PESMODForegroundEstimation")
 class PESMODForegroundEstimation():
-    def __init__(self, neighborhood_matrix: tuple = (3, 3), num_frames=10) -> None:
+    def __init__(self, neighborhood_matrix: tuple = (3, 3), num_frames=10, suppress=False) -> None:
         self.neighborhood_matrix = neighborhood_matrix
         self.frames_history = None
         self.num_frames = num_frames
+        self.suppress = suppress
         self.times = 0
+
         self.filter_w, self.filter_h = self.neighborhood_matrix
         self.pad_w = int(self.filter_w / 2)
         self.pad_h = int(self.filter_h / 2)
 
+        PESMODForegroundEstimation.compile_difference()
+
+    @staticmethod
+    def compile_difference():
         temp1 = np.zeros((400, 400, 3, 3))
         temp2 = np.zeros((3, 3, 400, 400))
         difference(temp1, temp2)
@@ -82,7 +88,6 @@ class PESMODForegroundEstimation():
                                        constant_values=(np.inf, np.inf))
             background_patches = view_as_windows(padded_background, self.neighborhood_matrix)
 
-
             s1 = time()
             padded_frame = np.pad(frame, ((self.pad_w, self.pad_w), (self.pad_h, self.pad_h)),
                                   constant_values=(np.inf, np.inf))
@@ -92,12 +97,12 @@ class PESMODForegroundEstimation():
 
             broadcasted_frame = np.broadcast_to(frame, (self.filter_w, self.filter_h, w, h))
 
-
             foreground = difference(background_patches, broadcasted_frame)
 
-            mn = np.mean(frame)
-            std = np.std(frame)
-            foreground[frame < mn + std] = 0
+            if self.suppress:
+                mn = np.mean(frame)
+                std = np.std(frame)
+                foreground[frame < mn + std] = 0
 
             self.frames_history = np.append(self.frames_history,np.expand_dims(frame, axis=0), axis=0)
 
