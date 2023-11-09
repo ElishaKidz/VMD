@@ -3,7 +3,7 @@ import cv2 as cv
 from skimage.util import view_as_windows
 from VMD.MovingCameraForegroundEstimetor.ForegroundEstimetor import ForegroundEstimetor
 from time import time
-from numba import jit, prange
+from numba import jit, prange, njit
 foreground_estimators = {}
 
 
@@ -64,9 +64,11 @@ class PESMODForegroundEstimation():
         self.filter_w, self.filter_h = self.neighborhood_matrix
         self.pad_w = int(self.filter_w / 2)
         self.pad_h = int(self.filter_h / 2)
+
         temp1 = np.zeros((400, 400, 3, 3))
         temp2 = np.zeros((3, 3, 400, 400))
         difference(temp1, temp2)
+
     
     def __call__(self, frame):
         s = time()
@@ -96,11 +98,6 @@ class PESMODForegroundEstimation():
             mn = np.mean(frame)
             std = np.std(frame)
             foreground[frame < mn + std] = 0
-            #foreground = np.abs(background_patches.reshape(-1) - np.repeat(frame, filter_w * filter_h)).reshape(w, h, -1).min(axis=2).astype(np.uint8)
-
-            # foreground = np.abs(np.transpose(background_patches, (2, 3, 0, 1)) -
-            #                    broadcasted_frame).transpose((2, 3, 0 ,1)).reshape(w, h, -1).min(axis=2).astype(np.uint8)
-
 
             self.frames_history = np.append(self.frames_history,np.expand_dims(frame, axis=0), axis=0)
 
@@ -124,7 +121,7 @@ def difference(background_patches, broadcasted_frame):
 
     for i in prange(h):
         for j in prange(w):
-            diff = np.abs(background_patches[i, j] - frame[i, j])
+            diff = np.abs(np.subtract(background_patches[i, j] , frame[i, j]))
             min_diff = np.min(diff)
             foreground[i, j] = min_diff
     return foreground
