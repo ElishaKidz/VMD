@@ -296,12 +296,12 @@ class StatisticalModel(BaseModel):
         alpha = np.repeat(np.repeat(alpha, self.block_size, axis=0), self.block_size, axis=1)
         neighborhood_size = (5, 5)
         kernel = np.ones(neighborhood_size) / np.prod(neighborhood_size)
-        alpha = 0.3
+        alpha = 0.5
 
         self.temporal_property = alpha * self.temporal_property + (1-alpha) * det / 255
         self.spatial_property = alpha * self.spatial_property + (1-alpha) * \
                                 scipy.signal.convolve2d(gray / 255, kernel, mode='same')
-        probs = self.temporal_property *  self.spatial_property
+        probs = self.temporal_property * self.spatial_property
         out = (probs * 255).astype(np.uint8)
         return out
 
@@ -447,10 +447,16 @@ class StatisticalModel(BaseModel):
         big_ages = np.kron(self.ages[0], np.ones((self.block_size, self.block_size)))  # same for ages
         big_vars = np.kron(self.vars[0], np.ones((self.block_size, self.block_size)))  # same for vars
         if self.calc_probs:
-            det = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
-            return self.calc_probability(gray, det, com_ages)
+            out = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
+            mn = np.mean(gray)
+            std = np.std(gray)
+            out[gray < mn + np.sqrt(self.theta_d) * std] = 0
+            out = self.calc_probability(gray, out, com_ages)
         else:
-            return StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
+            out = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
+            mn = np.mean(gray)
+            std = np.std(gray)
+            out[gray < mn + np.sqrt(self.theta_d) * std] = 0
         return out
 
     def get_foreground(self, gray, com_means, com_vars, com_ages):
