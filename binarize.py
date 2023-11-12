@@ -37,6 +37,27 @@ class DilateErodeBinarizer:
         return thresh_frame
 
 
+@register("FrameSuppresionDilateErodeBinarizer")
+class FrameSuppresionDilateErodeBinarizer(DilateErodeBinarizer):
+    def __init__(self, diff_frame_threshold: int = 30, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
+                 thickness=10 ,dilate_kwargs: dict = None, erode_kwargs: dict = None):
+        super(FrameSuppresionDilateErodeBinarizer, self).__init__(diff_frame_threshold, dilate_kernel_size, erode_kernel_size,
+                                                          dilate_kwargs, erode_kwargs)
+        self.thickness = thickness
+
+    def replace_frame_with_zeros(self, image):
+        frame_thickness = int(self.thickness / 100 * max(image.shape))
+        image[:frame_thickness, :] = 0  # Top frame
+        image[-frame_thickness:, :] = 0  # Bottom frame
+        image[:, :frame_thickness] = 0  # Left frame
+        image[:, -frame_thickness:] = 0  # Right frame
+        return image
+
+    def __call__(self, gray):
+        gray = self.replace_frame_with_zeros(gray)
+        return super(FrameSuppresionDilateErodeBinarizer, self).__call__(gray)
+        
+
 @register("DilateErodeDynamicBinarizer")
 class DilateErodeDynamicBinarizer(DilateErodeBinarizer):
     def __init__(self, diff_frame_threshold: int = 150, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),

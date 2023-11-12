@@ -96,8 +96,8 @@ class ForegroundEstimetor:
             return self.first_pass(gray_frame)
 
         if self.smooth:
-            # gary_frame = cv2.medianBlur(gray_frame, 5)
-            gray_frame = cv2.GaussianBlur(gray_frame, (5, 5), 0)
+            gary_frame = cv2.medianBlur(gray_frame, 5)
+            gray_frame = cv2.GaussianBlur(gray_frame, (7, 7), 0)
 
         # compensate
         prev_means, prev_vars, prev_ages = self.statistical_models.get_models()

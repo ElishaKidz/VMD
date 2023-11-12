@@ -30,6 +30,7 @@ class BaseModel:
         self.vars = np.zeros((self.num_models, self.model_height, self.model_width))
         self.ages = np.zeros((self.num_models, self.model_height, self.model_width))
 
+
     def get_models(self):
         """
         :return: means vars and ages of models
@@ -235,8 +236,8 @@ class CompensationModel(BaseModel):
         self.vars[:, y_grid_coords[cond], x_grid_coords[cond]] = self.var_init  # update the new grid with the init variance
         self.ages[:, y_grid_coords[cond], x_grid_coords[cond]] = 0
         corrected_age = self.ages * np.exp(-self.lam * (self.vars - self.theta_v))
-        # self.ages[self.vars > self.theta_v] = corrected_age[self.vars > self.theta_v]   # added age reduction
-        # self.vars[self.vars < self.var_trim] = self.var_trim  # triming the variance from below
+        self.ages[self.vars > self.theta_v] = corrected_age[self.vars > self.theta_v]   # added age reduction
+        self.vars[self.vars < self.var_trim] = self.var_trim  # triming the variance from below
         return self.get_models()
 
 
@@ -246,7 +247,7 @@ class StatisticalModel(BaseModel):
     choose foreground
     """
     def __init__(self, num_models, model_height, model_width, block_size, var_init, var_trim, age_trim, theta_s, theta_d=4,
-                 dynamic=False, calc_probs=False, sensetivity=False):
+                 dynamic=False, calc_probs=False, sensitivity=False):
         super(StatisticalModel, self).__init__(num_models, model_height, model_width, block_size, var_init, var_trim)
         self.age_trim = age_trim
         self.theta_s = theta_s
@@ -254,10 +255,15 @@ class StatisticalModel(BaseModel):
         self.matrix_theta_d = None
         self.dynamic = dynamic
         self.calc_probs = calc_probs
-        self.sensetivity = sensetivity
+        self.sensitivity = sensitivity
+
+        self.temporal_property = None
+        self.spatial_property = None
 
     def init(self):
         super(StatisticalModel, self).init()
+        self.temporal_property = np.zeros((self.model_height * self.block_size, self.model_width * self.block_size))
+        self.spatial_property = np.zeros((self.model_height * self.block_size, self.model_width * self.block_size))
 
     @staticmethod
     def rebinMean(arr, factor):
@@ -286,22 +292,18 @@ class StatisticalModel(BaseModel):
         alpha[~models_to_update] = 1
         return alpha
 
-    @staticmethod
-    def calc_probability(gray, big_mean, big_vars, big_ages):
-        """
-        calc probability of pixels to be foreground
-        :param gray: gray image
-        :param big_mean: each pixel has the value of the mean of its grid
-        :param big_vars: same for vars
-        :param big_ages: same for ages
-        :return: probabilities
-        """
-        cdf = scipy.stats.norm(loc=big_mean, scale=np.sqrt(big_vars)).cdf(gray)
-        reverse_cdf = 1 - cdf
-        out = np.maximum(cdf, reverse_cdf)
-        out[big_ages <= 1] = 0.5
-        out *= 255
-        out = out.astype(np.uint8)
+    def calc_probability(self, gray, det, com_ages):
+        # alpha = StatisticalModel.get_alpha(com_ages, self.models_to_update)[0]
+        # alpha = np.repeat(np.repeat(alpha, self.block_size, axis=0), self.block_size, axis=1)
+        neighborhood_size = (5, 5)
+        kernel = np.ones(neighborhood_size) / np.prod(neighborhood_size)
+        alpha = 0.5
+
+        self.temporal_property = alpha * self.temporal_property + (1-alpha) * det / 255
+        self.spatial_property = alpha * self.spatial_property + (1-alpha) * \
+                                scipy.signal.convolve2d(gray / 255, kernel, mode='same')
+        probs = self.temporal_property * self.spatial_property
+        out = (probs * 255).astype(np.uint8)
         return out
 
     @staticmethod
@@ -446,10 +448,7 @@ class StatisticalModel(BaseModel):
         if self.calc_probs:
             out = StatisticalModel.calc_probability(gray, big_mean, big_vars, big_ages)
         else:
-            self.matrix_theta_d = np.ones(gray.shape) * self.theta_d
-            if self.dynamic:
-                self.matrix_theta_d += (((np.max(gray) - gray) / np.max(gray))**2) * 13
-            out = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.matrix_theta_d)
+            out = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
         mn = np.mean(gray)
         std = np.std(gray)
         out[gray < mn + np.sqrt(self.theta_d) * std] = 0
@@ -466,10 +465,10 @@ class StatisticalModel(BaseModel):
         """
         cur_mean = StatisticalModel.rebinMean(gray, (self.block_size, self.block_size))  # calc each grid mean to decide which model to update, aka calculate M(t)
         models_to_update, model_index = self.choose_models_for_update(cur_mean, com_means, com_vars, com_ages)
-        if self.sensetivity == "mixed":
+        if self.sensitivity == "mixed":
             out = self.mix_updating_and_foreground(gray, models_to_update, model_index, cur_mean, com_means, com_vars,
                                                    com_ages)
-        elif self.sensetivity:
+        elif self.sensitivity:
             out = self.choose_foreground(gray)
             self.update_models(gray, models_to_update, model_index, cur_mean, com_means, com_vars, com_ages)
         else:
