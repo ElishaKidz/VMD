@@ -4,8 +4,6 @@ from skimage.util import view_as_windows
 from VMD.MovingCameraForegroundEstimetor.ForegroundEstimetor import ForegroundEstimetor
 from time import time
 from numba import jit, prange
-
-
 foreground_estimators = {}
 
 
