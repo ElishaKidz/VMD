@@ -24,7 +24,7 @@ binarizer:
 detector:
   detector_name: 'DetectionsFromContours'
   detector_params:
-    bbox_format: 'fiftyone'
+    bbox_format: 'yolo'
     bbox_col_names: ["xRelative","yRelative","width","height"]
     
 
