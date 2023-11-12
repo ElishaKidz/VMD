@@ -45,6 +45,11 @@ class MedianForegroundEstimation:
 
         self.frames_history.append(frame)
         return foreground
+    
+    def reset(self):
+        self.frames_history = []
+    
+
 
 
 @register("MOG2")
@@ -64,8 +69,6 @@ class PESMODForegroundEstimation():
         self.frames_history = None
         self.num_frames = num_frames
         self.suppress = suppress
-        self.times = 0
-
         self.filter_w, self.filter_h = self.neighborhood_matrix
         self.pad_w = int(self.filter_w / 2)
         self.pad_h = int(self.filter_h / 2)
@@ -79,7 +82,6 @@ class PESMODForegroundEstimation():
         difference(temp1, temp2)
 
     def __call__(self, frame):
-        s = time()
         if self.frames_history is None:
             self.frames_history = np.expand_dims(frame, axis=0)
             self.window_sum = self.frames_history[-1].astype(np.int32)
@@ -108,9 +110,11 @@ class PESMODForegroundEstimation():
                 self.frames_history = self.frames_history[1:]
 
             self.window_sum += self.frames_history[-1]
-        e = time()
-        self.times += e - s
         return foreground
+    
+    def reset(self):
+        self.frames_history  = None
+    
 
 
 @jit(parallel=True)
