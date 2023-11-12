@@ -149,7 +149,6 @@ class CompensationModel(BaseModel):
 
         return W, temp_means, temp_ages, cond_horizontal, cond_vertical, cond_diagonal, cond_self
 
-
     def compensate(self, H, prev_means, prev_vars, prev_ages):
         """
         compensate the models
@@ -235,9 +234,9 @@ class CompensationModel(BaseModel):
                     prev_x_grid_coords >= self.model_width - 1)  # if new grid that was not intreduce before
         self.vars[:, y_grid_coords[cond], x_grid_coords[cond]] = self.var_init  # update the new grid with the init variance
         self.ages[:, y_grid_coords[cond], x_grid_coords[cond]] = 0
-        # corrected_age = self.ages * np.exp(-self.lam * (self.vars - self.theta_v))
-        # self.ages[self.vars > self.theta_v] = corrected_age[self.vars > self.theta_v]   # added age reduction #TODO:fix!!!!!!!
-        self.vars[self.vars < self.var_trim] = self.var_trim  # triming the variance from below
+        corrected_age = self.ages * np.exp(-self.lam * (self.vars - self.theta_v))
+        # self.ages[self.vars > self.theta_v] = corrected_age[self.vars > self.theta_v]   # added age reduction
+        # self.vars[self.vars < self.var_trim] = self.var_trim  # triming the variance from below
         return self.get_models()
 
 
@@ -256,7 +255,6 @@ class StatisticalModel(BaseModel):
         self.dynamic = dynamic
         self.calc_probs = calc_probs
         self.sensetivity = sensetivity
-
 
     def init(self):
         super(StatisticalModel, self).init()
@@ -353,8 +351,7 @@ class StatisticalModel(BaseModel):
         model_index[cond2 & ~cond1] = 1
         com_ages[1][(~cond1) & (~cond2)] = 0
 
-        models_to_update = np.arange(self.means.shape[0]).reshape(-1, 1,
-                                                                1) == model_index  # which model to take as a 3d matrix with trues and falses in the entries
+        models_to_update = np.arange(self.means.shape[0]).reshape(-1, 1, 1) == model_index  # which model to take as a 3d matrix with trues and falses in the entries
         return models_to_update, model_index
 
     def update_means(self, com_means, alpha, cur_mean):
@@ -428,13 +425,13 @@ class StatisticalModel(BaseModel):
         :return: chosen pixels to be foreground
         """
         alpha = StatisticalModel.get_alpha(com_ages, models_to_update)
-        self.update_means(com_means, alpha,cur_mean)
-        out = self.choose_foreground(gray, com_means, com_vars, com_ages)
+        self.update_means(com_means, alpha, cur_mean)
+        out = self.choose_foreground(gray)
         self.update_vars(com_vars, alpha, gray, models_to_update, model_index)
         self.update_ages(com_ages, models_to_update)
         return out
 
-    def choose_foreground(self, gray, com_means, com_vars, com_ages):
+    def choose_foreground(self, gray):
         """
         select foreground pixels
         :param gray: image
@@ -473,11 +470,11 @@ class StatisticalModel(BaseModel):
             out = self.mix_updating_and_foreground(gray, models_to_update, model_index, cur_mean, com_means, com_vars,
                                                    com_ages)
         elif self.sensetivity:
-            out = self.choose_foreground(gray, com_means, com_vars, com_ages)
+            out = self.choose_foreground(gray)
             self.update_models(gray, models_to_update, model_index, cur_mean, com_means, com_vars, com_ages)
         else:
             self.update_models(gray, models_to_update, model_index, cur_mean, com_means, com_vars, com_ages)
-            out = self.choose_foreground(gray, com_means, com_vars, com_ages)
+            out = self.choose_foreground(gray)
         return out
 
 
