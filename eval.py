@@ -49,21 +49,23 @@ def get_precision_recall(pred_bboxes, gt_bboxes, iou_threshold=0.2):
             ious.append(pred_bbox.iou(gt_bbox))
     
     hits = (np.array(ious) > iou_threshold).sum()
+    misses = (np.array(ious) == 0).sum()
     precision = hits / len(pred_bboxes) if len(pred_bboxes) > 0 else 0
     recall = hits / len(gt_bboxes) if len(gt_bboxes) > 0 else 0
 
-    return precision, recall
+    return precision, recall, hits / misses
 
 def eval_video(pred_bboxes_df, gt_bboxes_df, bbox_col_names):
     frames_with_bboxes = set(pred_bboxes_df["frame_num"].values).union(set(gt_bboxes_df["frame_num"].values))
-    sum_precision, sum_recall = 0, 0
+    sum_precision, sum_recall, sum_hit_miss_ratio = 0, 0, 0, 0
     for frame_id in frames_with_bboxes:
         frame_pred_bboxes = pred_bboxes_df.loc[pred_bboxes_df["frame_num"] == frame_id][bbox_col_names].values.tolist()
         frame_gt_bboxes = gt_bboxes_df.loc[gt_bboxes_df["frame_num"] == frame_id][bbox_col_names].values.tolist()
-        frame_precision, frame_recall = get_precision_recall(frame_pred_bboxes, frame_gt_bboxes)
+        frame_precision, frame_recall, frame_hit_miss = get_precision_recall(frame_pred_bboxes, frame_gt_bboxes)
         
         sum_precision += frame_precision
         sum_recall += frame_recall
+        sum_hit_miss_ratio += frame_hit_miss
 
     return sum_precision, sum_recall, len(frames_with_bboxes)
 
@@ -73,18 +75,20 @@ def main(vmd_obj, remote_dir, save_detections_dir=None, rendered_videos_dir_path
     
     pred_bboxes_df = pd.DataFrame({})
     gt_bboxes_df = pd.DataFrame({})
-    precision, recall, number_of_frames_with_bbox = 0, 0, 0
+    precision, recall, hit_miss, number_of_frames_with_bbox = 0, 0, 0, 0
 
     for video_dir in fs.ls(remote_dir)[1:]:
         if video_dir.split("/")[-1] in ignored_videos:
             continue
         video_pred_bboxes, video_gt_bboxes = get_video_dfs(video_dir, vmd_obj, bbox_col_names, bbox_format)
-        video_precision, video_recall, video_number_of_frames_with_bbox = eval_video(video_pred_bboxes, video_gt_bboxes, bbox_col_names)
+        video_precision, video_recall, video_hit_miss, video_number_of_frames_with_bbox = eval_video(video_pred_bboxes, video_gt_bboxes, bbox_col_names)
         print(f"{video_dir} Precision: {video_precision / video_number_of_frames_with_bbox}")
         print(f"{video_dir} Recall: {video_recall / video_number_of_frames_with_bbox}")
-        
+        print(f"{video_dir} Hit Miss: {video_hit_miss}")
+
         precision += video_precision
         recall += recall
+        hit_miss += video_hit_miss
         number_of_frames_with_bbox += video_number_of_frames_with_bbox
 
         video_name = [file_name.split("/")[-1] for file_name in fs.ls(video_dir) if ".MP4" in file_name][0]
@@ -106,6 +110,7 @@ def main(vmd_obj, remote_dir, save_detections_dir=None, rendered_videos_dir_path
 
     print(f"Precision: {precision / number_of_frames_with_bbox}")
     print(f"Recall: {recall / number_of_frames_with_bbox}")
+    print(f"Avg hit miss ratio: {hit_miss / len(fs.ls(remote_dir)[1:])}")
 
 
 if __name__ == '__main__':
