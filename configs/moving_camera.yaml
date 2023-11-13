@@ -5,10 +5,9 @@ stabilizer:
 
 
 binarizer:
-  binarizer_name: 'FrameSuppresionDilateErodeBinarizer'
+  binarizer_name: 'NormalizedDilateErodeBinarizer'
   binarizer_params:
     erode_kernel_size: [3, 3]
-    thickness: 3
     dilate_kwargs:
       iterations: 1
 

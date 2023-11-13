@@ -37,11 +37,11 @@ class DilateErodeBinarizer:
         return thresh_frame
 
 
-@register("FrameSuppresionDilateErodeBinarizer")
-class FrameSuppresionDilateErodeBinarizer(DilateErodeBinarizer):
+@register("FrameSuppressionDilateErodeBinarizer")
+class FrameSuppressionDilateErodeBinarizer(DilateErodeBinarizer):
     def __init__(self, diff_frame_threshold: int = 30, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
                  thickness=10 ,dilate_kwargs: dict = None, erode_kwargs: dict = None):
-        super(FrameSuppresionDilateErodeBinarizer, self).__init__(diff_frame_threshold, dilate_kernel_size, erode_kernel_size,
+        super(FrameSuppressionDilateErodeBinarizer, self).__init__(diff_frame_threshold, dilate_kernel_size, erode_kernel_size,
                                                           dilate_kwargs, erode_kwargs)
         self.thickness = thickness
 

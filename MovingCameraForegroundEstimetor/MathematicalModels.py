@@ -292,7 +292,7 @@ class StatisticalModel(BaseModel):
         alpha[~models_to_update] = 1
         return alpha
 
-    def calc_probability(self, gray, det, com_ages):
+    def calc_probability(self, gray, det):
         # alpha = StatisticalModel.get_alpha(com_ages, self.models_to_update)[0]
         # alpha = np.repeat(np.repeat(alpha, self.block_size, axis=0), self.block_size, axis=1)
         neighborhood_size = (5, 5)
@@ -446,12 +446,13 @@ class StatisticalModel(BaseModel):
         big_ages = np.kron(self.ages[0], np.ones((self.block_size, self.block_size)))  # same for ages
         big_vars = np.kron(self.vars[0], np.ones((self.block_size, self.block_size)))  # same for vars
         if self.calc_probs:
-            out = StatisticalModel.calc_probability(gray, big_mean, big_vars, big_ages)
+            out = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
+            out = self.calc_probability(gray, out)
         else:
             out = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
-        mn = np.mean(gray)
-        std = np.std(gray)
-        out[gray < mn + np.sqrt(self.theta_d) * std] = 0
+        # mn = np.mean(gray)
+        # std = np.std(gray)
+        # out[gray < mn + np.sqrt(self.theta_d) * std] = 0
         return out
 
     def get_foreground(self, gray, com_means, com_vars, com_ages):
