@@ -73,15 +73,20 @@ def main(vmd_obj, remote_dir, save_detections_dir=None, rendered_videos_dir_path
     
     pred_bboxes_df = pd.DataFrame({})
     gt_bboxes_df = pd.DataFrame({})
-    
+    precision, recall, number_of_frames_with_bbox = 0, 0, 0
+
     for video_dir in fs.ls(remote_dir)[1:]:
         if video_dir.split("/")[-1] in ignored_videos:
             continue
         video_pred_bboxes, video_gt_bboxes = get_video_dfs(video_dir, vmd_obj, bbox_col_names, bbox_format)
-        video_precision, video_recall, number_of_frames_with_bbox = eval_video(video_pred_bboxes, video_gt_bboxes, bbox_col_names)
-        print(f"{video_dir} Precision: {video_precision / number_of_frames_with_bbox}")
-        print(f"{video_dir} Recall: {video_recall / number_of_frames_with_bbox}")
+        video_precision, video_recall, video_number_of_frames_with_bbox = eval_video(video_pred_bboxes, video_gt_bboxes, bbox_col_names)
+        print(f"{video_dir} Precision: {video_precision / video_number_of_frames_with_bbox}")
+        print(f"{video_dir} Recall: {video_recall / video_number_of_frames_with_bbox}")
         
+        precision += video_precision
+        recall += recall
+        number_of_frames_with_bbox += video_number_of_frames_with_bbox
+
         video_name = [file_name.split("/")[-1] for file_name in fs.ls(video_dir) if ".MP4" in file_name][0]
         if rendered_videos_dir_path is not None:
             fs.get(f"{video_dir}/{video_name}", "video.mp4")
@@ -99,12 +104,16 @@ def main(vmd_obj, remote_dir, save_detections_dir=None, rendered_videos_dir_path
             pred_bboxes_df.to_csv(f"{save_detections_dir}/PRED_{video_name}.csv")
             gt_bboxes_df.to_csv(f"{save_detections_dir}/GT_{video_name}.csv")
 
+    print(f"Precision: {precision / number_of_frames_with_bbox}")
+    print(f"Recall: {recall / number_of_frames_with_bbox}")
+
+
 if __name__ == '__main__':
     from pathlib import Path
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
-    parser.add_argument('--remote_dir', type=str, default="soi_experiments/annotations-example/")
+    parser.add_argument('--remote_dir', type=str, default="soi_experiments/annotations-example/test")
     parser.add_argument('--config_path', type=str, default=Path('configs/default.yaml'))
     parser.add_argument('--bbox_save_dir', type=str, default=Path('outputs/bboxes'))
     parser.add_argument('--rendered_videos_dir', type=str, default=Path('outputs/videos'))
