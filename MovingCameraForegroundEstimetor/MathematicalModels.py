@@ -376,7 +376,7 @@ class StatisticalModel(BaseModel):
     def calc_probability(self, gray, det):
         neighborhood_size = (5, 5)
         kernel = np.ones(neighborhood_size) / np.prod(neighborhood_size)
-        alpha = 0.5
+        alpha = 0.3
 
         self.temporal_property = alpha * self.temporal_property + (1 - alpha) * det / 255
         self.spatial_property = alpha * self.spatial_property + (1 - alpha) * \
