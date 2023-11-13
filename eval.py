@@ -67,7 +67,7 @@ def eval_video(pred_bboxes_df, gt_bboxes_df, bbox_col_names):
         sum_recall += frame_recall
         sum_hit_miss_ratio += frame_hit_miss
 
-    return sum_precision, sum_recall, len(frames_with_bboxes)
+    return sum_precision, sum_recall, sum_hit_miss_ratio, len(frames_with_bboxes)
 
 def main(vmd_obj, remote_dir, save_detections_dir=None, rendered_videos_dir_path=None):
     bbox_col_names = vmd_obj.bbox_creator_obj.bbox_col_names
@@ -84,7 +84,7 @@ def main(vmd_obj, remote_dir, save_detections_dir=None, rendered_videos_dir_path
         video_precision, video_recall, video_hit_miss, video_number_of_frames_with_bbox = eval_video(video_pred_bboxes, video_gt_bboxes, bbox_col_names)
         print(f"{video_dir} Precision: {video_precision / video_number_of_frames_with_bbox}")
         print(f"{video_dir} Recall: {video_recall / video_number_of_frames_with_bbox}")
-        print(f"{video_dir} Hit Miss: {video_hit_miss}")
+        print(f"{video_dir} Hit Miss: {video_hit_miss / video_number_of_frames_with_bbox}")
 
         precision += video_precision
         recall += recall
@@ -110,7 +110,7 @@ def main(vmd_obj, remote_dir, save_detections_dir=None, rendered_videos_dir_path
 
     print(f"Precision: {precision / number_of_frames_with_bbox}")
     print(f"Recall: {recall / number_of_frames_with_bbox}")
-    print(f"Avg hit miss ratio: {hit_miss / len(fs.ls(remote_dir)[1:])}")
+    print(f"Avg hit miss ratio: {hit_miss / number_of_frames_with_bbox}")
 
 
 if __name__ == '__main__':
