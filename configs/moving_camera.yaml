@@ -7,7 +7,6 @@ stabilizer:
 binarizer:
   binarizer_name: 'NormalizedDilateErodeBinarizer'
   binarizer_params:
-    erode_kernel_size: [3, 3]
     dilate_kwargs:
       iterations: 1
 
@@ -32,5 +31,6 @@ foreground_estimator:
     theta_s: 2
     theta_d: 2
     calc_probs: False
-    sensetivity: "mixed"  # 'mixed' , True or False
+    sensitivity: "mixed"  # 'mixed' , True or False
+    suppress: True
     smooth: False

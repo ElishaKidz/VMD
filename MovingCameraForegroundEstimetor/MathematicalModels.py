@@ -1,13 +1,13 @@
 import numpy as np
-import cv2
 from VMD.MovingCameraForegroundEstimetor import utils
 import scipy
 
 
 class BaseModel:
     """
-    prenet class for the compensation model and the statistics model
+    parent class for the compensation model and the statistics model
     """
+
     def __init__(self, num_models, model_height, model_width, block_size, var_init, var_trim):
         """
         see foreground model init for documentation
@@ -15,6 +15,7 @@ class BaseModel:
         self.prev_means = None
         self.vars = None
         self.ages = None
+        self.means = None
         self.model_height = model_height
         self.model_width = model_width
         self.block_size = block_size
@@ -29,7 +30,6 @@ class BaseModel:
         self.means = np.zeros((self.num_models, self.model_height, self.model_width))
         self.vars = np.zeros((self.num_models, self.model_height, self.model_width))
         self.ages = np.zeros((self.num_models, self.model_height, self.model_width))
-
 
     def get_models(self):
         """
@@ -47,7 +47,7 @@ class CompensationModel(BaseModel):
     def init(self, means, vars, ages):
         super(CompensationModel, self).init()
         H = np.identity(3)
-        return self.compensate(H,  means, vars, ages)
+        return self.compensate(H, means, vars, ages)
 
     def get_weights_for_directions(self, abs_offset_x, abs_offset_y):
         """
@@ -77,7 +77,8 @@ class CompensationModel(BaseModel):
             grid_overlap_x[cond]]  # weighted mean for the direction overlaping
 
     def compensate_mean_and_age(self, temp_means, temp_ages, prev_means, prev_ages, W, W_H, W_V, W_HV, W_self,
-                                x_grid_coords, y_grid_coords, prev_grid_coords_x, prev_grid_coords_y, offset_x, offset_y):
+                                x_grid_coords, y_grid_coords, prev_grid_coords_x, prev_grid_coords_y, offset_x,
+                                offset_y):
         """
         compensate the means and the ages of the model
         :param temp_means: where to temporarly store the compenated means
@@ -98,9 +99,10 @@ class CompensationModel(BaseModel):
         :return: updated and compensated W, temp_means, temp_ages and conditions for update cond_horizontal,
         cond_vertical, cond_diagonal, cond_self for updating variance so not calc them again
         """
-        x_overlap_idx = prev_grid_coords_x + np.sign(offset_x).astype(int)  # figure out X direction of jumping, taking the overlaping center index in X
+        x_overlap_idx = prev_grid_coords_x + np.sign(offset_x).astype(
+            int)  # figure out X direction of jumping, taking the overlaping center index in X
         cond_horizontal = (prev_grid_coords_y >= 0) & (prev_grid_coords_y < self.model_height) & (
-                    x_overlap_idx >= 0) & (
+                x_overlap_idx >= 0) & (
                                   x_overlap_idx < self.model_width)  # check if this crop is in image
 
         # horizontal overlapping
@@ -128,7 +130,7 @@ class CompensationModel(BaseModel):
         x_overlap_idx = prev_grid_coords_x + np.sign(offset_x).astype(int)
         y_overlap_idx = prev_grid_coords_y + np.sign(offset_y).astype(int)
         cond_diagonal = (y_overlap_idx >= 0) & (y_overlap_idx < self.model_height) & (x_overlap_idx >= 0) & (
-                    x_overlap_idx < self.model_width)
+                x_overlap_idx < self.model_width)
         CompensationModel.update_by_condition(cond_diagonal, temp_means, prev_means, W_HV, x_grid_coords, y_grid_coords,
                                               x_overlap_idx, y_overlap_idx)
         CompensationModel.update_by_condition(cond_diagonal, temp_ages, prev_ages, W_HV, x_grid_coords, y_grid_coords,
@@ -138,12 +140,11 @@ class CompensationModel(BaseModel):
 
         # same for closest center
         cond_self = (prev_grid_coords_y >= 0) & (prev_grid_coords_y < self.model_height) & (prev_grid_coords_x >= 0) & (
-                    prev_grid_coords_x < self.model_width)
+                prev_grid_coords_x < self.model_width)
         CompensationModel.update_by_condition(cond_self, temp_means, prev_means, W_self, x_grid_coords, y_grid_coords,
                                               prev_grid_coords_x, prev_grid_coords_y)
         CompensationModel.update_by_condition(cond_self, temp_ages, prev_ages, W_self, x_grid_coords, y_grid_coords,
                                               prev_grid_coords_x, prev_grid_coords_y)
-
 
         W[:, y_grid_coords[cond_self], x_grid_coords[cond_self]] += W_self[
             y_grid_coords[cond_self], x_grid_coords[cond_self]]
@@ -183,7 +184,7 @@ class CompensationModel(BaseModel):
         W_H, W_V, W_HV = self.get_weights_for_directions(abs_offset_x, abs_offset_y)
 
         W_self = ((1 - abs_offset_x) * (1 - abs_offset_y)).reshape(self.model_height,
-                                                 self.model_width)  # the normalized weight of this crop
+                                                                   self.model_width)  # the normalized weight of this crop
 
         W = np.zeros((self.num_models, self.model_height, self.model_width))
 
@@ -192,7 +193,8 @@ class CompensationModel(BaseModel):
 
         W, temp_means, temp_ages, cond_horizontal, cond_vertical, cond_diagonal, cond_self = \
             self.compensate_mean_and_age(temp_means, temp_ages, prev_means, prev_ages, W, W_H, W_V, W_HV, W_self,
-                                     x_grid_coords, y_grid_coords, prev_x_grid_coords, prev_y_grid_coords, offset_x, offset_y)
+                                         x_grid_coords, y_grid_coords, prev_x_grid_coords, prev_y_grid_coords, offset_x,
+                                         offset_y)
 
         # save the copmpensated means and ages and normalized according to the weights
         self.means[W != 0] = 0
@@ -203,51 +205,107 @@ class CompensationModel(BaseModel):
         self.ages += temp_ages / W
 
         #  same shit for variance
-        x_overlap_idx = prev_x_grid_coords + np.sign(offset_x).astype(int)  # figure out X direction of jumping, taking the overlaping center index in X
+        x_overlap_idx = prev_x_grid_coords + np.sign(offset_x).astype(
+            int)  # figure out X direction of jumping, taking the overlaping center index in X
         y_overlap_idx = prev_y_grid_coords + np.sign(offset_y).astype(int)
         temp_var = np.zeros(prev_means.shape)
-        temp_var[:, y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] += W_H[y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] * (prev_vars[:, prev_y_grid_coords[cond_horizontal], x_overlap_idx[cond_horizontal]] +
-                                                                      np.power(self.means[:, y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] -
-                                                                               prev_means[:, prev_y_grid_coords[cond_horizontal],
-                                                                               x_overlap_idx[cond_horizontal]],
-                                                                               2))  # TODO: not the same calculation. think deeply
+        temp_var[:, y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] += W_H[y_grid_coords[
+                                                                                               cond_horizontal],
+                                                                                           x_grid_coords[
+                                                                                               cond_horizontal]] * (
+                                                                                               prev_vars[:,
+                                                                                               prev_y_grid_coords[
+                                                                                                   cond_horizontal],
+                                                                                               x_overlap_idx[
+                                                                                                   cond_horizontal]] +
+                                                                                               np.power(
+                                                                                                   self.means[:,
+                                                                                                   y_grid_coords[
+                                                                                                       cond_horizontal],
+                                                                                                   x_grid_coords[
+                                                                                                       cond_horizontal]] -
+                                                                                                   prev_means[:,
+                                                                                                   prev_y_grid_coords[
+                                                                                                       cond_horizontal],
+                                                                                                   x_overlap_idx[
+                                                                                                       cond_horizontal]],
+                                                                                                   2))  # TODO: not the same calculation. think deeply
 
-        temp_var[:, y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]] += W_V[y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]] * (prev_vars[:, y_overlap_idx[cond_vertical], prev_x_grid_coords[cond_vertical]] +
-                                                                      np.power(self.means[:, y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]] -
-                                                                               prev_means[:,
-                                                                               y_overlap_idx[cond_vertical], prev_x_grid_coords[cond_vertical]],
-                                                                               2))
+        temp_var[:, y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]] += W_V[y_grid_coords[cond_vertical],
+                                                                                       x_grid_coords[cond_vertical]] * (
+                                                                                           prev_vars[:,
+                                                                                           y_overlap_idx[
+                                                                                               cond_vertical],
+                                                                                           prev_x_grid_coords[
+                                                                                               cond_vertical]] +
+                                                                                           np.power(self.means[:,
+                                                                                                    y_grid_coords[
+                                                                                                        cond_vertical],
+                                                                                                    x_grid_coords[
+                                                                                                        cond_vertical]] -
+                                                                                                    prev_means[:,
+                                                                                                    y_overlap_idx[
+                                                                                                        cond_vertical],
+                                                                                                    prev_x_grid_coords[
+                                                                                                        cond_vertical]],
+                                                                                                    2))
 
-        temp_var[:, y_grid_coords[cond_diagonal], x_grid_coords[cond_diagonal]] += W_HV[y_grid_coords[cond_diagonal], x_grid_coords[cond_diagonal]] * (prev_vars[:, y_overlap_idx[cond_diagonal], x_overlap_idx[cond_diagonal]] +
-                                                                           np.power(self.means[:, y_grid_coords[cond_diagonal],
-                                                                                    x_grid_coords[cond_diagonal]] -
-                                                                                    prev_means[:, y_overlap_idx[cond_diagonal],
-                                                                                    x_overlap_idx[cond_diagonal]],
-                                                                                    2))
+        temp_var[:, y_grid_coords[cond_diagonal], x_grid_coords[cond_diagonal]] += W_HV[y_grid_coords[cond_diagonal],
+                                                                                        x_grid_coords[
+                                                                                            cond_diagonal]] * (
+                                                                                           prev_vars[:,
+                                                                                           y_overlap_idx[
+                                                                                               cond_diagonal],
+                                                                                           x_overlap_idx[
+                                                                                               cond_diagonal]] +
+                                                                                           np.power(self.means[:,
+                                                                                                    y_grid_coords[
+                                                                                                        cond_diagonal],
+                                                                                                    x_grid_coords[
+                                                                                                        cond_diagonal]] -
+                                                                                                    prev_means[:,
+                                                                                                    y_overlap_idx[
+                                                                                                        cond_diagonal],
+                                                                                                    x_overlap_idx[
+                                                                                                        cond_diagonal]],
+                                                                                                    2))
 
-        temp_var[:, y_grid_coords[cond_self], x_grid_coords[cond_self]] += W_self[y_grid_coords[cond_self], x_grid_coords[cond_self]] * (
-                    prev_vars[:, prev_y_grid_coords[cond_self], prev_x_grid_coords[cond_self]] +
-                    np.power(self.means[:, y_grid_coords[cond_self], x_grid_coords[cond_self]] -
-                             prev_means[:, prev_y_grid_coords[cond_self], prev_x_grid_coords[cond_self]], 2))
+        temp_var[:, y_grid_coords[cond_self], x_grid_coords[cond_self]] += W_self[
+                                                                               y_grid_coords[cond_self], x_grid_coords[
+                                                                                   cond_self]] * (
+                                                                                   prev_vars[:,
+                                                                                   prev_y_grid_coords[cond_self],
+                                                                                   prev_x_grid_coords[cond_self]] +
+                                                                                   np.power(self.means[:,
+                                                                                            y_grid_coords[cond_self],
+                                                                                            x_grid_coords[cond_self]] -
+                                                                                            prev_means[:,
+                                                                                            prev_y_grid_coords[
+                                                                                                cond_self],
+                                                                                            prev_x_grid_coords[
+                                                                                                cond_self]], 2))
 
         self.vars = temp_var / W  # same normalization
         cond = (prev_y_grid_coords < 1) | (prev_y_grid_coords >= self.model_height - 1) | (prev_x_grid_coords < 1) | (
-                    prev_x_grid_coords >= self.model_width - 1)  # if new grid that was not intreduce before
-        self.vars[:, y_grid_coords[cond], x_grid_coords[cond]] = self.var_init  # update the new grid with the init variance
+                prev_x_grid_coords >= self.model_width - 1)  # if new grid that was not intreduce before
+        self.vars[:, y_grid_coords[cond],
+        x_grid_coords[cond]] = self.var_init  # update the new grid with the init variance
         self.ages[:, y_grid_coords[cond], x_grid_coords[cond]] = 0
         corrected_age = self.ages * np.exp(-self.lam * (self.vars - self.theta_v))
-        self.ages[self.vars > self.theta_v] = corrected_age[self.vars > self.theta_v]   # added age reduction
+        self.ages[self.vars > self.theta_v] = corrected_age[self.vars > self.theta_v]  # added age reduction
         self.vars[self.vars < self.var_trim] = self.var_trim  # triming the variance from below
         return self.get_models()
 
 
 class StatisticalModel(BaseModel):
     """
-    statistical model that is responsible to decide each models to updates according to eq (1) (2) (3) and
+    statistical model that is responsible to decide each models to update according to eq (1) (2) (3) and
     choose foreground
     """
-    def __init__(self, num_models, model_height, model_width, block_size, var_init, var_trim, age_trim, theta_s, theta_d=4,
-                 dynamic=False, calc_probs=False, sensitivity=False):
+
+    def __init__(self, num_models, model_height, model_width, block_size, var_init, var_trim, age_trim, theta_s,
+                 theta_d=4,
+                 dynamic=False, calc_probs=False, sensitivity=False, suppress=False):
         super(StatisticalModel, self).__init__(num_models, model_height, model_width, block_size, var_init, var_trim)
         self.age_trim = age_trim
         self.theta_s = theta_s
@@ -256,6 +314,7 @@ class StatisticalModel(BaseModel):
         self.dynamic = dynamic
         self.calc_probs = calc_probs
         self.sensitivity = sensitivity
+        self.suppress = suppress
 
         self.temporal_property = None
         self.spatial_property = None
@@ -268,7 +327,7 @@ class StatisticalModel(BaseModel):
     @staticmethod
     def rebinMean(arr, factor):
         # averaging each patch
-        sh = arr.shape[0] // factor[0], factor[0], -1, factor[1]   # get number of grids in H. W
+        sh = arr.shape[0] // factor[0], factor[0], -1, factor[1]  # get number of grids in H. W
         res = arr.reshape(sh).mean(-1).mean(1)
         return res
 
@@ -282,34 +341,24 @@ class StatisticalModel(BaseModel):
     @staticmethod
     def get_alpha(com_ages, models_to_update):
         """
-        calc couficient of the paper
+        calc coefficient of the paper
         :param com_ages: compensated ages
         :param models_to_update:  the indexes of the chosen models to update
-        :return: cofficient
+        :return: coefficient
         """
         alpha = com_ages / (com_ages + 1)
         alpha[com_ages < 1] = 0
         alpha[~models_to_update] = 1
         return alpha
 
-    def calc_probability(self, gray, det):
-        # alpha = StatisticalModel.get_alpha(com_ages, self.models_to_update)[0]
-        # alpha = np.repeat(np.repeat(alpha, self.block_size, axis=0), self.block_size, axis=1)
-        neighborhood_size = (5, 5)
-        kernel = np.ones(neighborhood_size) / np.prod(neighborhood_size)
-        alpha = 0.5
-
-        self.temporal_property = alpha * self.temporal_property + (1-alpha) * det / 255
-        self.spatial_property = alpha * self.spatial_property + (1-alpha) * \
-                                scipy.signal.convolve2d(gray / 255, kernel, mode='same')
-        probs = self.temporal_property * self.spatial_property
-        out = (probs * 255).astype(np.uint8)
-        return out
-
     @staticmethod
     def calc_by_thresh(gray, big_means, big_vars, big_ages, theta):
         """
         decide each pixels are foreground by thresholding as in eq (16)
+        :param gray: the image
+        :param big_means: documented in other functions
+        :param big_vars: documented in other functions
+        :param big_ages: documented in other functions
         :param theta: the threshold
         :return: foreground-background matrix
         """
@@ -318,23 +367,44 @@ class StatisticalModel(BaseModel):
         out[(big_ages > 1) & (dist_img > theta * big_vars)] = 255
         return out
 
+    def suppression(self, gray, out):
+        mn = np.mean(gray)
+        std = np.std(gray)
+        out[gray < mn + np.sqrt(self.theta_d) * std] = 0
+        return out
+
+    def calc_probability(self, gray, det):
+        neighborhood_size = (5, 5)
+        kernel = np.ones(neighborhood_size) / np.prod(neighborhood_size)
+        alpha = 0.5
+
+        self.temporal_property = alpha * self.temporal_property + (1 - alpha) * det / 255
+        self.spatial_property = alpha * self.spatial_property + (1 - alpha) * \
+                                scipy.signal.convolve2d(gray / 255, kernel, mode='same')
+        probs = self.temporal_property * self.spatial_property
+        out = (probs * 255).astype(np.uint8)
+        return out
+
     def choose_models_for_update(self, cur_mean, com_means, com_vars, com_ages):
         """
         chose models for updating
-        :param cur_mean:   each pixel containes the current (observable) mean of its grid
+        :param cur_mean:   each pixel contains the current (observable) mean of its grid
         :param com_means:   compensated means
         :param com_vars:    compensated vars
         :param com_ages:    compensated ages
         :return: the chosen models for updating
         """
-        models_with_max_age = self.num_models - np.argmax(com_ages[::-1], axis=0).reshape(-1) - 1  # find maximums of ages
+        models_with_max_age = self.num_models - np.argmax(com_ages[::-1], axis=0).reshape(
+            -1) - 1  # find maximums of ages
         maxes = np.max(com_ages, axis=0)
         h, w = self.model_height, self.model_width
         jj, ii = np.arange(h * w) // w, np.arange(h * w) % w  # indices of grids
 
-        ii, jj = ii[models_with_max_age != 0], jj[models_with_max_age != 0]  # indices of grids with max age in index larger then zero, probably because chosen model (apperent model) need to be in first index
+        ii, jj = ii[models_with_max_age != 0], jj[
+            models_with_max_age != 0]  # indices of grids with max age in index larger then zero, probably because chosen model (apperent model) need to be in first index
         models_with_max_age = models_with_max_age[models_with_max_age != 0]  # same
-        com_ages[models_with_max_age, jj, ii] = 0  # initiate models in those indices since there should be new candidate models there
+        com_ages[
+            models_with_max_age, jj, ii] = 0  # initiate models in those indices since there should be new candidate models there
         com_ages[0] = maxes  # store the max ages in the first entry of the 3d array
 
         # same for means and vars
@@ -353,23 +423,24 @@ class StatisticalModel(BaseModel):
         model_index[cond2 & ~cond1] = 1
         com_ages[1][(~cond1) & (~cond2)] = 0
 
-        models_to_update = np.arange(self.means.shape[0]).reshape(-1, 1, 1) == model_index  # which model to take as a 3d matrix with trues and falses in the entries
+        models_to_update = np.arange(self.means.shape[0]).reshape(-1, 1,
+                                                                  1) == model_index  # which model to take as a 3d matrix with trues and falses in the entries
         return models_to_update, model_index
 
     def update_means(self, com_means, alpha, cur_mean):
         """
         update the means according to eq (1)
         :param com_means: compensated means
-        :param alpha: the cofficient of mu in eq (1): a_com(t-1) / [a_com(t-1) + 1]
+        :param alpha: the coefficient of mu in eq (1): a_com(t-1) / [a_com(t-1) + 1]
         :param cur_mean: the current mean as explained before
         """
-        self.means = com_means * alpha + cur_mean * (1 - alpha)    # update mean
+        self.means = com_means * alpha + cur_mean * (1 - alpha)  # update mean
 
     def update_vars(self, com_vars, alpha, gray_image, models_to_update, model_index):
         """
-        update the variance accoring to eq (2)
+        update the variance according to eq (2)
         :param com_vars: compensated vars
-        :param alpha: the cofficient of mu in eq (1): a_com(t-1) / [a_com(t-1) + 1]
+        :param alpha: the coefficient of mu in eq (1): a_com(t-1) / [a_com(t-1) + 1]
         :param gray_image: the image
         :param models_to_update: first output of "choose_models_to_update"
         :param model_index: second output of "choose_models_to_update"
@@ -401,7 +472,7 @@ class StatisticalModel(BaseModel):
         :param gray_image: image
         :param models_to_update: first output of "choose_models_to_update"
         :param model_index: second output of "choose_models_to_update"
-        :param cur_mean: each pixel containes the current (observable) mean of its grid
+        :param cur_mean: each pixel contains the current (observable) mean of its grid
         :param com_means: compensated means
         :param com_vars: compensated vars
         :param com_ages: compensated ages
@@ -420,11 +491,11 @@ class StatisticalModel(BaseModel):
         :param gray: image
         :param models_to_update: first output of "choose_models_to_update"
         :param model_index: second output of "choose_models_to_update"
-        :param cur_mean: each pixel containes the current (observable) mean of its grid
+        :param cur_mean: each pixel contains the current (observable) mean of its grid
         :param com_means: compensated means
         :param com_vars: compensated vars
         :param com_ages: compensated ages
-        :return: chosen pixels to be foreground
+        :return: chosen pixels to be foregrounded
         """
         alpha = StatisticalModel.get_alpha(com_ages, models_to_update)
         self.update_means(com_means, alpha, cur_mean)
@@ -437,12 +508,10 @@ class StatisticalModel(BaseModel):
         """
         select foreground pixels
         :param gray: image
-        :param com_means: compensated means
-        :param com_vars: compensated vars
-        :param com_ages: compensated ages
         :return: chosen foreground pixels
         """
-        big_mean = np.kron(self.means[0], np.ones((self.block_size, self.block_size)))  # current appearing mean extended as previouse
+        big_mean = np.kron(self.means[0],
+                           np.ones((self.block_size, self.block_size)))  # current appearing mean extended as previouse
         big_ages = np.kron(self.ages[0], np.ones((self.block_size, self.block_size)))  # same for ages
         big_vars = np.kron(self.vars[0], np.ones((self.block_size, self.block_size)))  # same for vars
         if self.calc_probs:
@@ -450,9 +519,8 @@ class StatisticalModel(BaseModel):
             out = self.calc_probability(gray, out)
         else:
             out = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
-        # mn = np.mean(gray)
-        # std = np.std(gray)
-        # out[gray < mn + np.sqrt(self.theta_d) * std] = 0
+        if self.suppress:
+            out = self.suppression(gray, out)
         return out
 
     def get_foreground(self, gray, com_means, com_vars, com_ages):
@@ -464,7 +532,9 @@ class StatisticalModel(BaseModel):
         :param com_ages: compensated ages
         :return: chosen foreground pixels
         """
-        cur_mean = StatisticalModel.rebinMean(gray, (self.block_size, self.block_size))  # calc each grid mean to decide which model to update, aka calculate M(t)
+        cur_mean = StatisticalModel.rebinMean(gray, (
+            self.block_size,
+            self.block_size))  # calc each grid mean to decide which model to update, aka calculate M(t)
         models_to_update, model_index = self.choose_models_for_update(cur_mean, com_means, com_vars, com_ages)
         if self.sensitivity == "mixed":
             out = self.mix_updating_and_foreground(gray, models_to_update, model_index, cur_mean, com_means, com_vars,
@@ -476,5 +546,3 @@ class StatisticalModel(BaseModel):
             self.update_models(gray, models_to_update, model_index, cur_mean, com_means, com_vars, com_ages)
             out = self.choose_foreground(gray)
         return out
-
-

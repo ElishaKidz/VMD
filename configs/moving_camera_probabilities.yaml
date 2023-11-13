@@ -31,5 +31,6 @@ foreground_estimator:
     theta_s: 2
     theta_d: 2
     calc_probs: True
-    sensetivity: "mixed"  # 'mixed' , True or False
-    smooth: False
+    sensitivity: "mixed"  # 'mixed' , True or False
+    suppress: True
+    smooth: True
