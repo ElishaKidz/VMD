@@ -21,8 +21,16 @@ def project(points, H):
     :return: projected points
     """
     project_points = H.dot(points)
+    # project_points = np.matmul(H, points)
     new_w = project_points[2, :]
     new_x = (project_points[0, :] / new_w)  # current centers location in the previous frame center X
     new_y = (project_points[1, :] / new_w)  # current centers location in the previous frame center Y
     return new_x, new_y
+
+
+def reshape(arr: np.ndarray, new_shape):
+    return arr.reshape(*new_shape)
+
+
+
 

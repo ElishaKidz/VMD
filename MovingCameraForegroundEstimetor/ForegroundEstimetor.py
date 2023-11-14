@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 from VMD.MovingCameraForegroundEstimetor.MathematicalModels import CompensationModel, StatisticalModel
 from VMD.MovingCameraForegroundEstimetor.KLTWrapper import KLTWrapper
@@ -55,6 +57,10 @@ class ForegroundEstimetor:
         self.sensitivity = sensitivity
         self.smooth = smooth
 
+        self.num_frames = 0
+        self.com_time = 0
+        self.stat_time = 0
+
     def first_pass(self, gray_frame: np.array):
         """
         activate when the frame is the first frame, initialize all the modules
@@ -99,14 +105,21 @@ class ForegroundEstimetor:
         if self.smooth:
             gray_frame = cv2.medianBlur(gray_frame, 5)
             # gray_frame = cv2.GaussianBlur(gray_frame, (7, 7), 0)
+        self.num_frames += 1
 
         # compensate
         prev_means, prev_vars, prev_ages = self.statistical_models.get_models()
         H = self.homography_calculator.RunTrack(gray_frame)
+
+        s1 = time.time()
         com_means, com_vars, com_ages = self.compensation_models.compensate(H, prev_means, prev_vars, prev_ages)
+        e1 = time.time()
+        self.com_time += e1 - s1
 
         # estimate foreground
         foreground = self.statistical_models.get_foreground(gray_frame, com_means, com_vars, com_ages)
+        e2 = time.time()
+        self.stat_time += e2 - e1
         return foreground
 
     def __call__(self, gray_frame):

@@ -1,6 +1,9 @@
+import time
+
 import numpy as np
-from VMD.MovingCameraForegroundEstimetor import utils
+from VMD.MovingCameraForegroundEstimetor import utils, utils_numba
 import scipy
+from numba import jit, njit, prange, types
 
 
 class BaseModel:
@@ -23,6 +26,9 @@ class BaseModel:
         self.var_init = var_init
         self.var_trim = var_trim
 
+        self.func_time = 0
+        self.num_frames = 0
+
     def init(self):
         """
         create zero params of size of the models and the grids
@@ -44,10 +50,20 @@ class CompensationModel(BaseModel):
         self.lam = lam
         self.theta_v = theta_v
 
+        self.x_grid_coords = None
+        self.y_grid_coords = None
+        self.points = None
+
     def init(self, means, vars, ages):
         super(CompensationModel, self).init()
         H = np.identity(3)
+        self.get_grid_coords_and_points()
         return self.compensate(H, means, vars, ages)
+
+    def get_grid_coords_and_points(self):
+        self.x_grid_coords, self.y_grid_coords = utils.get_grid_coords(self.model_width, self.model_height)
+        self.points = np.asarray([self.x_grid_coords * self.block_size + self.block_size / 2, self.y_grid_coords * self.block_size +
+                             self.block_size / 2, np.ones(len(self.x_grid_coords))])  # current frame grid centers 3D
 
     def get_weights_for_directions(self, abs_offset_x, abs_offset_y):
         """
@@ -57,7 +73,9 @@ class CompensationModel(BaseModel):
         W_H = (abs_offset_x * (1 - abs_offset_y)).reshape(self.model_height, self.model_width)
         W_V = (abs_offset_y * (1 - abs_offset_x)).reshape(self.model_height, self.model_width)
         W_HV = (abs_offset_x * abs_offset_y).reshape(self.model_height, self.model_width)
-        return W_H, W_V, W_HV
+        W_self = ((1 - abs_offset_x) * (1 - abs_offset_y)).reshape(self.model_height,
+                                                                   self.model_width)
+        return W_H, W_V, W_HV, W_self
 
     @staticmethod
     def update_by_condition(cond, temp, prev, W, x_grid_coords, y_grid_coords, grid_overlap_x, grid_overlap_y):
@@ -75,6 +93,7 @@ class CompensationModel(BaseModel):
             W[y_grid_coords[cond], x_grid_coords[cond]] * \
             prev[:, grid_overlap_y[cond],
             grid_overlap_x[cond]]  # weighted mean for the direction overlaping
+        # utils_numba.update_by_condition(cond, temp, prev, W, x_grid_coords, y_grid_coords, grid_overlap_x, grid_overlap_y)
 
     def compensate_mean_and_age(self, temp_means, temp_ages, prev_means, prev_ages, W, W_H, W_V, W_HV, W_self,
                                 x_grid_coords, y_grid_coords, prev_grid_coords_x, prev_grid_coords_y, offset_x,
@@ -160,41 +179,26 @@ class CompensationModel(BaseModel):
         :param prev_ages: same for ages
         :return: compensated model
         """
-        x_grid_coords, y_grid_coords = utils.get_grid_coords(self.model_width, self.model_height)
-
-        points = np.asarray([x_grid_coords * self.block_size + self.block_size / 2, y_grid_coords * self.block_size +
-                             self.block_size / 2, np.ones(len(x_grid_coords))])  # current frame grid centers 3D
-
+        self.num_frames += 1
         # find prev centers
-        prev_center_x, prev_center_y = utils.project(points, H)
-
-        prev_x_grid_coords_temp = prev_center_x / self.block_size
-        prev_y_grid_coords_temp = prev_center_y / self.block_size
-
-        prev_x_grid_coords = np.floor(prev_x_grid_coords_temp).astype(int)  # grid location index X
-        prev_y_grid_coords = np.floor(prev_y_grid_coords_temp).astype(int)  # grid location index Y
-
-        offset_x = prev_x_grid_coords_temp - prev_x_grid_coords - 0.5  # offset of grid's center from the prev to curr frame X
-        offset_y = prev_y_grid_coords_temp - prev_y_grid_coords - 0.5  # offset of grid's center from the prev to curr frame Y
-
-        abs_offset_x = abs(offset_x)  # offset of grid's center from the prev to curr frame X
-        abs_offset_y = abs(offset_y)  # offset of grid's center from the prev to curr frame Y
+        prev_center_x, prev_center_y = utils_numba.project(self.points, H)
+        prev_x_grid_coords, prev_y_grid_coords, offset_x, offset_y, abs_offset_x, abs_offset_y = \
+            utils_numba.calculate_all_coords(prev_center_x, prev_center_y, self.block_size)
 
         # calculate the weight of the crop which the prev center is in
-        W_H, W_V, W_HV = self.get_weights_for_directions(abs_offset_x, abs_offset_y)
+        W_H, W_V, W_HV, W_self = utils_numba.get_weights_for_directions(abs_offset_x, abs_offset_y, self.model_height,
+                                                                self.model_width)
 
-        W_self = ((1 - abs_offset_x) * (1 - abs_offset_y)).reshape(self.model_height,
-                                                                   self.model_width)  # the normalized weight of this crop
+          # the normalized weight of this crop
 
         W = np.zeros((self.num_models, self.model_height, self.model_width))
 
         temp_means = np.zeros(prev_means.shape)
         temp_ages = np.zeros(prev_means.shape)
-
         W, temp_means, temp_ages, cond_horizontal, cond_vertical, cond_diagonal, cond_self = \
-            self.compensate_mean_and_age(temp_means, temp_ages, prev_means, prev_ages, W, W_H, W_V, W_HV, W_self,
-                                         x_grid_coords, y_grid_coords, prev_x_grid_coords, prev_y_grid_coords, offset_x,
-                                         offset_y)
+            utils_numba.compensate_mean_and_age(temp_means, temp_ages, prev_means, prev_ages, W, W_H, W_V, W_HV, W_self,
+                                             self.x_grid_coords, self.y_grid_coords, prev_x_grid_coords, prev_y_grid_coords,
+                                             offset_x, offset_y, self.model_height, self.model_width)
 
         # save the copmpensated means and ages and normalized according to the weights
         self.means[W != 0] = 0
@@ -205,95 +209,21 @@ class CompensationModel(BaseModel):
         self.ages += temp_ages / W
 
         #  same shit for variance
-        x_overlap_idx = prev_x_grid_coords + np.sign(offset_x).astype(
-            int)  # figure out X direction of jumping, taking the overlaping center index in X
-        y_overlap_idx = prev_y_grid_coords + np.sign(offset_y).astype(int)
-        temp_var = np.zeros(prev_means.shape)
-        temp_var[:, y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] += W_H[y_grid_coords[
-                                                                                               cond_horizontal],
-                                                                                           x_grid_coords[
-                                                                                               cond_horizontal]] * (
-                                                                                               prev_vars[:,
-                                                                                               prev_y_grid_coords[
-                                                                                                   cond_horizontal],
-                                                                                               x_overlap_idx[
-                                                                                                   cond_horizontal]] +
-                                                                                               np.power(
-                                                                                                   self.means[:,
-                                                                                                   y_grid_coords[
-                                                                                                       cond_horizontal],
-                                                                                                   x_grid_coords[
-                                                                                                       cond_horizontal]] -
-                                                                                                   prev_means[:,
-                                                                                                   prev_y_grid_coords[
-                                                                                                       cond_horizontal],
-                                                                                                   x_overlap_idx[
-                                                                                                       cond_horizontal]],
-                                                                                                   2))  # TODO: not the same calculation. think deeply
-
-        temp_var[:, y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]] += W_V[y_grid_coords[cond_vertical],
-                                                                                       x_grid_coords[cond_vertical]] * (
-                                                                                           prev_vars[:,
-                                                                                           y_overlap_idx[
-                                                                                               cond_vertical],
-                                                                                           prev_x_grid_coords[
-                                                                                               cond_vertical]] +
-                                                                                           np.power(self.means[:,
-                                                                                                    y_grid_coords[
-                                                                                                        cond_vertical],
-                                                                                                    x_grid_coords[
-                                                                                                        cond_vertical]] -
-                                                                                                    prev_means[:,
-                                                                                                    y_overlap_idx[
-                                                                                                        cond_vertical],
-                                                                                                    prev_x_grid_coords[
-                                                                                                        cond_vertical]],
-                                                                                                    2))
-
-        temp_var[:, y_grid_coords[cond_diagonal], x_grid_coords[cond_diagonal]] += W_HV[y_grid_coords[cond_diagonal],
-                                                                                        x_grid_coords[
-                                                                                            cond_diagonal]] * (
-                                                                                           prev_vars[:,
-                                                                                           y_overlap_idx[
-                                                                                               cond_diagonal],
-                                                                                           x_overlap_idx[
-                                                                                               cond_diagonal]] +
-                                                                                           np.power(self.means[:,
-                                                                                                    y_grid_coords[
-                                                                                                        cond_diagonal],
-                                                                                                    x_grid_coords[
-                                                                                                        cond_diagonal]] -
-                                                                                                    prev_means[:,
-                                                                                                    y_overlap_idx[
-                                                                                                        cond_diagonal],
-                                                                                                    x_overlap_idx[
-                                                                                                        cond_diagonal]],
-                                                                                                    2))
-
-        temp_var[:, y_grid_coords[cond_self], x_grid_coords[cond_self]] += W_self[
-                                                                               y_grid_coords[cond_self], x_grid_coords[
-                                                                                   cond_self]] * (
-                                                                                   prev_vars[:,
-                                                                                   prev_y_grid_coords[cond_self],
-                                                                                   prev_x_grid_coords[cond_self]] +
-                                                                                   np.power(self.means[:,
-                                                                                            y_grid_coords[cond_self],
-                                                                                            x_grid_coords[cond_self]] -
-                                                                                            prev_means[:,
-                                                                                            prev_y_grid_coords[
-                                                                                                cond_self],
-                                                                                            prev_x_grid_coords[
-                                                                                                cond_self]], 2))
+        temp_var = utils_numba.compensate_var(prev_vars, prev_means, self.means, W_H, W_V, W_HV, W_self,
+                                              self.x_grid_coords, self.y_grid_coords, prev_x_grid_coords,
+                                              prev_y_grid_coords, offset_x, offset_y, cond_horizontal, cond_vertical,
+                                              cond_diagonal, cond_self)
 
         self.vars = temp_var / W  # same normalization
         cond = (prev_y_grid_coords < 1) | (prev_y_grid_coords >= self.model_height - 1) | (prev_x_grid_coords < 1) | (
                 prev_x_grid_coords >= self.model_width - 1)  # if new grid that was not intreduce before
-        self.vars[:, y_grid_coords[cond],
-        x_grid_coords[cond]] = self.var_init  # update the new grid with the init variance
-        self.ages[:, y_grid_coords[cond], x_grid_coords[cond]] = 0
+        self.vars[:, self.y_grid_coords[cond],
+        self.x_grid_coords[cond]] = self.var_init  # update the new grid with the init variance
+        self.ages[:, self.y_grid_coords[cond], self.x_grid_coords[cond]] = 0
         corrected_age = self.ages * np.exp(-self.lam * (self.vars - self.theta_v))
         self.ages[self.vars > self.theta_v] = corrected_age[self.vars > self.theta_v]  # added age reduction
         self.vars[self.vars < self.var_trim] = self.var_trim  # triming the variance from below
+
         return self.get_models()
 
 
@@ -325,10 +255,18 @@ class StatisticalModel(BaseModel):
         self.spatial_property = np.zeros((self.model_height * self.block_size, self.model_width * self.block_size))
 
     @staticmethod
+    @jit(nopython=True, parallel=True)
     def rebinMean(arr, factor):
-        # averaging each patch
-        sh = arr.shape[0] // factor[0], factor[0], -1, factor[1]  # get number of grids in H. W
-        res = arr.reshape(sh).mean(-1).mean(1)
+        new_shape = (arr.shape[0] // factor[0], factor[0], arr.shape[1] // factor[1], factor[1])
+        res = np.empty((new_shape[0], new_shape[2]), dtype=arr.dtype)
+
+        for i in prange(new_shape[0]):
+            for j in prange(new_shape[2]):
+                total = 0.0
+                for k in prange(factor[0]):
+                    for l in prange(factor[1]):
+                        total += arr[i * factor[0] + k, j * factor[1] + l]
+                res[i, j] = total / (factor[0] * factor[1])
         return res
 
     @staticmethod
@@ -423,8 +361,7 @@ class StatisticalModel(BaseModel):
         model_index[cond2 & ~cond1] = 1
         com_ages[1][(~cond1) & (~cond2)] = 0
 
-        models_to_update = np.arange(self.means.shape[0]).reshape(-1, 1,
-                                                                  1) == model_index  # which model to take as a 3d matrix with trues and falses in the entries
+        models_to_update = np.arange(self.means.shape[0]).reshape(-1, 1, 1) == model_index  # which model to take as a 3d matrix with trues and falses in the entries
         return models_to_update, model_index
 
     def update_means(self, com_means, alpha, cur_mean):
@@ -532,16 +469,22 @@ class StatisticalModel(BaseModel):
         :param com_ages: compensated ages
         :return: chosen foreground pixels
         """
-        cur_mean = StatisticalModel.rebinMean(gray, (
-            self.block_size,
-            self.block_size))  # calc each grid mean to decide which model to update, aka calculate M(t)
+        self.num_frames += 1
+        cur_mean = StatisticalModel.rebinMean(gray, (self.block_size, self.block_size))
+
         models_to_update, model_index = self.choose_models_for_update(cur_mean, com_means, com_vars, com_ages)
+
         if self.sensitivity == "mixed":
             out = self.mix_updating_and_foreground(gray, models_to_update, model_index, cur_mean, com_means, com_vars,
                                                    com_ages)
         elif self.sensitivity:
+            s = time.time()
             out = self.choose_foreground(gray)
+            e = time.time()
+            if self.num_frames > 1:
+                self.func_time += e - s
             self.update_models(gray, models_to_update, model_index, cur_mean, com_means, com_vars, com_ages)
+
         else:
             self.update_models(gray, models_to_update, model_index, cur_mean, com_means, com_vars, com_ages)
             out = self.choose_foreground(gray)
