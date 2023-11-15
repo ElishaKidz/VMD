@@ -61,6 +61,8 @@ class ForegroundEstimetor:
         self.com_time = 0
         self.stat_time = 0
 
+        self.compile()
+
     def reset(self):
         self.is_first = True
 
