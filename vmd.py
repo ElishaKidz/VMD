@@ -8,6 +8,7 @@ from VMD.stabilization import stabilizers
 from VMD.foreground import foreground_estimators
 from SoiUtils.load import load_yaml
 
+
 class VMD:
     def __init__(self, yaml_path) -> None:
         logging.basicConfig(level=logging.DEBUG)
@@ -19,6 +20,7 @@ class VMD:
         self.bbox_creator_obj = detectors[vmd_params['detector']['detector_name']](**vmd_params['detector'].get('detector_params',{}))
         self.foreground_estimation_obj = foreground_estimators[vmd_params['foreground_estimator']['foreground_estimator_name']](**vmd_params['foreground_estimator'].get('foreground_estimator_params',{}))
         self.frame_counter = 0
+        self.time = 0
 
     def __call__(self, frame):
         # the cv2 caption reads all frames defaultly as bgr therefore they are converted to gray.

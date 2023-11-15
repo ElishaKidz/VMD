@@ -61,6 +61,24 @@ class ForegroundEstimetor:
         self.com_time = 0
         self.stat_time = 0
 
+    def reset(self):
+        self.is_first = True
+
+        self.homography_calculator = KLTWrapper()
+        self.compensation_models = None
+        self.statistical_models = None
+        self.model_height = None
+        self.model_width = None
+
+        self.num_frames = 0
+        self.com_time = 0
+        self.stat_time = 0
+
+    def compile(self):
+        gray = np.ones((256, 256))
+        self.first_pass(gray)
+        self.reset()
+
     def first_pass(self, gray_frame: np.array):
         """
         activate when the frame is the first frame, initialize all the modules

@@ -30,7 +30,3 @@ def project(points, H):
 
 def reshape(arr: np.ndarray, new_shape):
     return arr.reshape(*new_shape)
-
-
-
-
