@@ -10,6 +10,7 @@ from SoiUtils.load import load_yaml
 
 
 class VMD:
+    RESET_FN_NAME = 'reset'
     def __init__(self, yaml_path) -> None:
         logging.basicConfig(level=logging.DEBUG)
 
@@ -33,3 +34,22 @@ class VMD:
         logging.debug(f'frame number {self.frame_counter}')
         self.frame_counter += 1
         return frame_bboxes
+    
+    def reset(self):
+        if hasattr(self.video_stabilization_obj,VMD.RESET_FN_NAME):
+            self.video_stabilization_obj.reset()
+
+        if hasattr(self.binary_frame_creator_obj,VMD.RESET_FN_NAME):
+            self.binary_frame_creator_obj.reset()
+        
+        if hasattr(self.bbox_creator_obj,VMD.RESET_FN_NAME):
+            self.bbox_creator_obj.reset()
+        
+        if hasattr(self.foreground_estimation_obj,VMD.RESET_FN_NAME):
+            self.foreground_estimation_obj.reset()
+        
+        
+        
+        
+        
+        

@@ -1,0 +1,37 @@
+stabilizer:
+  stabilizer_name: 'OpticalFlowStabilization'
+  stabilizer_params:
+    rotation_matrix_buffer_size: 10
+    key_point_kwargs:
+      maxCorners: 20
+      qualityLevel: 0.01
+      minDistance: 30
+      
+    optical_flow_kwargs:
+      nextPts: 
+
+  
+binarizer:
+  binarizer_name: 'DilateErodeBinarizer'
+  binarizer_params:
+    dilate_kwargs:
+      iterations: 1
+
+    erode_kwargs:
+      iterations: 1
+
+
+detector:
+  detector_name: 'DetectionsFromContours'
+  detector_params:
+    bbox_format: 'yolo'
+    bbox_col_names: ["xRelative","yRelative","width","height"]
+    
+
+foreground_estimator:
+  foreground_estimator_name: 'PESMODForegroundEstimation'
+  foreground_estimator_params:
+    num_frames: 100
+    neighborhood_matrix: [3,3]
+
+

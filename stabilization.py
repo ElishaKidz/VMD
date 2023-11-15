@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 from VMD.fastMCD_master.KLTWrapper import KLTWrapper
 import cv2
-
+import logging
 stabilizers = {}
 
 
@@ -40,6 +40,8 @@ class OpticalFlowStabilization:
         else:
             rotated_frame = single_channel_frame
 
+        self.previous_single_channel_frame = single_channel_frame
+
         return rotated_frame
 
     def get_rotation_mat(self, frame):
@@ -50,10 +52,15 @@ class OpticalFlowStabilization:
             return None
 
         frame_key_points = cv.goodFeaturesToTrack(frame, **self.key_point_kwargs)
-        frame_key_points_previous_position, status, err = cv.calcOpticalFlowPyrLK(frame,
-                                                                                  self.previous_single_channel_frame,
-                                                                                  frame_key_points,
-                                                                                  **self.optical_flow_kwargs)
+        try:
+            frame_key_points_previous_position, status, err = cv.calcOpticalFlowPyrLK(frame,
+                                                                                    self.previous_single_channel_frame,
+                                                                                    frame_key_points,
+                                                                                    **self.optical_flow_kwargs)
+        except Exception as e:
+            logging.warning(f"Error calculating optical flow: {e}\n defaulting to not compromising for the movement")
+            return None
+        
         assert frame_key_points_previous_position.shape == frame_key_points.shape
 
         # Find the points where optical flow succeeded.
@@ -62,10 +69,15 @@ class OpticalFlowStabilization:
                                                                frame_key_points_previous_position[success_indices]
 
         # Estimate the homography.
-        rot_mat, mask = cv.findHomography(frame_key_points, frame_key_points_previous_position, cv.RANSAC, 10.0)
+        try:
+            rot_mat, mask = cv.findHomography(frame_key_points, frame_key_points_previous_position, cv.RANSAC, 10.0)
+        
+        except Exception as e:
+            logging.warning(f"Error calculating Homography: {e} \n defaulting to not compromising for the movement")
+            return None
+        
 
         # Update the previous gray frame to the next call.
-        self.previous_single_channel_frame = frame
 
         return rot_mat
 
@@ -73,6 +85,10 @@ class OpticalFlowStabilization:
     def rotate_frame(frame, rot_mat):
         rotated_frame = cv.warpPerspective(frame, rot_mat, (frame.shape[1], frame.shape[0]))
         return rotated_frame
+    
+    def reset(self):
+        self.previous_single_channel_frame = None
+        self.rotation_matrix_buffer = []
 
 
 @register("KLTStabilization")

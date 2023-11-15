@@ -40,7 +40,7 @@ class DilateErodeBinarizer:
 @register("FrameSuppressionDilateErodeBinarizer")
 class FrameSuppressionDilateErodeBinarizer(DilateErodeBinarizer):
     def __init__(self, diff_frame_threshold: int = 30, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
-                 thickness=10 ,dilate_kwargs: dict = None, erode_kwargs: dict = None):
+                 thickness=10, dilate_kwargs: dict = None, erode_kwargs: dict = None):
         super(FrameSuppressionDilateErodeBinarizer, self).__init__(diff_frame_threshold, dilate_kernel_size, erode_kernel_size,
                                                           dilate_kwargs, erode_kwargs)
         self.thickness = thickness
@@ -55,8 +55,8 @@ class FrameSuppressionDilateErodeBinarizer(DilateErodeBinarizer):
 
     def __call__(self, gray):
         gray = self.replace_frame_with_zeros(gray)
-        return super(FrameSuppresionDilateErodeBinarizer, self).__call__(gray)
-        
+        return super(FrameSuppressionDilateErodeBinarizer, self).__call__(gray)
+
 
 @register("DilateErodeDynamicBinarizer")
 class DilateErodeDynamicBinarizer(DilateErodeBinarizer):
@@ -87,7 +87,7 @@ class NormalizedDilateErodeBinarizer(DilateErodeBinarizer):
     def __call__(self, gray_frame):
         if not np.any(gray_frame):
             return gray_frame
-        foreground = gray_frame.astype(np.float64)
+        foreground = gray_frame.astype(np.float32)
         foreground = (foreground - np.min(foreground)) / (np.max(foreground) - np.min(foreground)) * 255
         foreground = gammaCorrection(foreground.astype(np.uint8), 2.2)
         return super(NormalizedDilateErodeBinarizer, self).__call__(foreground.astype(np.uint8))
