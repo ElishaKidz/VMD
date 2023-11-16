@@ -5,8 +5,9 @@ stabilizer:
 
 
 binarizer:
-  binarizer_name: 'NormalizedDilateErodeBinarizer'
+  binarizer_name: 'FrameSuppressionDilateErodeBinarizer'
   binarizer_params:
+    thickness: 5
     dilate_kwargs:
       iterations: 1
 
@@ -19,7 +20,7 @@ detector:
   detector_params:
     bbox_format: 'yolo'
     bbox_col_names: ["xRelative","yRelative","width","height"]
-    
+
 
 foreground_estimator:
   foreground_estimator_name: 'MovingCameraForegroundEstimetor'
@@ -32,9 +33,9 @@ foreground_estimator:
     theta_v: 2500.0
     age_trim: 30
     theta_s: 2
-    theta_d: 1.5
+    theta_d: 2
     dynamic: False
     calc_probs: False
-    sensitivity: True  # 'mixed' , True or False
+    sensitivity: False  # 'mixed' , True or False
     suppress: True
     smooth: False
