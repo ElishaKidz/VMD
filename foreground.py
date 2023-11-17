@@ -117,7 +117,7 @@ class PESMODForegroundEstimation():
 
 
 
-@jit(parallel=True)
+@jit(nopython=True, parallel=True)
 def difference(background_patches, broadcasted_frame):
     h, w = broadcasted_frame.shape[2], broadcasted_frame.shape[3]
 
