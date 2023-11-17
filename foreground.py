@@ -50,8 +50,6 @@ class MedianForegroundEstimation:
         self.frames_history = []
 
 
-
-
 @register("MOG2")
 class MOG2():
     def __init__(self, **kwargs):
@@ -103,7 +101,7 @@ class PESMODForegroundEstimation():
                 std = np.std(frame)
                 foreground[frame < mn + std] = 0
 
-            self.frames_history = np.append(self.frames_history,np.expand_dims(frame, axis=0), axis=0)
+            self.frames_history = np.append(self.frames_history, np.expand_dims(frame, axis=0), axis=0)
 
             if self.frames_history.shape[0]> self.num_frames:
                 self.window_sum -= self.frames_history[0]
@@ -116,8 +114,7 @@ class PESMODForegroundEstimation():
         self.frames_history = None
 
 
-
-@jit(parallel=True)
+@jit(nopython=True, parallel=True)
 def difference(background_patches, broadcasted_frame):
     h, w = broadcasted_frame.shape[2], broadcasted_frame.shape[3]
 

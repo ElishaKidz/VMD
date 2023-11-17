@@ -11,21 +11,15 @@ from VMD.vmd import VMD
 
 
 def main(vmd_obj, video_cap, save_detections_file=None, rendered_video_file_path=None, frame_limit=100):
-    # vmd_obj(np.ones((512, 640, 3), dtype=np.uint8))
-    # vmd_obj.reset()
     records = []
-    total_time = 0
     while True:
         frame_num = video_cap.get(cv.CAP_PROP_POS_FRAMES)
         success, frame = video_cap.read()
-        s = time.time()
         if not success or frame_num >= frame_limit:
             break
         frame_bboxes = vmd_obj(frame)
-        e = time.time()
         frame_bboxes = frame_bboxes.assign(frame_num=frame_num)
         records.append(frame_bboxes)
-        total_time += e - s
 
     video_bboxes_df = pd.concat(records).astype('int32')
 
@@ -39,13 +33,6 @@ def main(vmd_obj, video_cap, save_detections_file=None, rendered_video_file_path
         draw_video_from_bool_csv(video_cap, video_bboxes_df, bbox_cols_names=bbox_col_names,
                                  output_video_path=rendered_video_file_path, bbox_foramt=bbox_foramt,
                                  frame_limit=frame_limit)
-
-    print(f"compensation time is {vmd_obj.foreground_estimation_obj.com_time/vmd_obj.foreground_estimation_obj.num_frames}")
-    print(f"statistical time is {vmd_obj.foreground_estimation_obj.stat_time/vmd_obj.foreground_estimation_obj.num_frames}")
-    print(f"h time is {vmd_obj.foreground_estimation_obj.h_time / vmd_obj.foreground_estimation_obj.num_frames}")
-    print(f"time per frame is {total_time/(vmd_obj.foreground_estimation_obj.num_frames + 1)}")
-    print(f"vmd time per frame {vmd_obj.time/vmd_obj.frame_counter}")
-    print(f"foreground is {vmd_obj.foreground_estimation_obj.total_time / vmd_obj.foreground_estimation_obj.num_frames}")
 
 
 if __name__ == '__main__':

@@ -29,18 +29,14 @@ class VMD:
         frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
         stabilized_frame = self.video_stabilization_obj(frame)
-        s = time.time()
         foreground_estimation = self.foreground_estimation_obj(stabilized_frame)
-        e = time.time()
         binary_foreground_estimation = self.binary_frame_creator_obj(foreground_estimation)
         frame_bboxes = self.bbox_creator_obj(binary_foreground_estimation)
         logging.debug(f'frame number {self.frame_counter}')
-        self.time += e - s
         self.frame_counter += 1
         return frame_bboxes
     
     def reset(self):
-        self.frame_counter = 0
         self.time = 0
         if hasattr(self.video_stabilization_obj, VMD.RESET_FN_NAME):
             self.video_stabilization_obj.reset()
