@@ -1,4 +1,4 @@
-from numba import prange, jit, njit, types
+from numba import prange, jit
 import numpy as np
 
 
@@ -70,8 +70,8 @@ def calculate_all_coords(prev_center_x, prev_center_y, block_size):
     prev_x_grid_coords = np.floor(prev_x_grid_coords_temp).astype(np.int32)  # grid location index X
     prev_y_grid_coords = np.floor(prev_y_grid_coords_temp).astype(np.int32)  # grid location index Y
 
-    offset_x = prev_x_grid_coords_temp - prev_x_grid_coords - 0.5  # offset of grid's center from the prev to curr frame X
-    offset_y = prev_y_grid_coords_temp - prev_y_grid_coords - 0.5  # offset of grid's center from the prev to curr frame Y
+    offset_x = prev_x_grid_coords_temp - prev_x_grid_coords - np.float32(0.5)  # offset of grid's center from the prev to curr frame X
+    offset_y = prev_y_grid_coords_temp - prev_y_grid_coords - np.float32(0.5)  # offset of grid's center from the prev to curr frame Y
 
     abs_offset_x = np.abs(offset_x)  # offset of grid's center from the prev to curr frame X
     abs_offset_y = np.abs(offset_y)  # offset of grid's center from the prev to curr frame Y
@@ -145,16 +145,17 @@ def compensate_mean_and_age(temp_means, temp_ages, prev_means, prev_ages, W, W_H
     :return: updated and compensated W, temp_means, temp_ages and conditions for update cond_horizontal,
     cond_vertical, cond_diagonal, cond_self for updating variance so not calc them again
     """
-    x_overlap_idx = prev_grid_coords_x + np.sign(offset_x).astype(np.int32)  # figure out X direction of jumping, taking the overlaping center index in X
+    x_overlap_idx = prev_grid_coords_x + np.sign(offset_x).astype(
+        np.int32)  # figure out X direction of jumping, taking the overlaping center index in X
     cond_horizontal = (prev_grid_coords_y >= 0) & (prev_grid_coords_y < model_height) & (
             x_overlap_idx >= 0) & (x_overlap_idx < model_width)  # check if this crop is in image
 
     # horizontal overlapping
     temp_means = update_by_condition(cond_horizontal, temp_means, prev_means, W_H, x_grid_coords,
-                                          y_grid_coords,
-                                          x_overlap_idx, prev_grid_coords_y)
+                                     y_grid_coords,
+                                     x_overlap_idx, prev_grid_coords_y)
     temp_ages = update_by_condition(cond_horizontal, temp_ages, prev_ages, W_H, x_grid_coords, y_grid_coords,
-                                          x_overlap_idx, prev_grid_coords_y)
+                                    x_overlap_idx, prev_grid_coords_y)
 
     W = update_W_by_condition(W, W_H, x_grid_coords, y_grid_coords, cond_horizontal)
     # W[:, y_grid_coords[cond_horizontal], x_grid_coords[cond_horizontal]] += W_H[y_grid_coords[cond_horizontal],
@@ -166,11 +167,9 @@ def compensate_mean_and_age(temp_means, temp_ages, prev_means, prev_ages, W, W_H
                     (prev_grid_coords_x < model_width)
 
     temp_means = update_by_condition(cond_vertical, temp_means, prev_means, W_V, x_grid_coords, y_grid_coords,
-                                          prev_grid_coords_x, y_overlap_idx)
+                                     prev_grid_coords_x, y_overlap_idx)
     temp_ages = update_by_condition(cond_vertical, temp_ages, prev_ages, W_V, x_grid_coords, y_grid_coords,
-                                          prev_grid_coords_x, y_overlap_idx)
-    # W[:, y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]] += W_V[
-    #     y_grid_coords[cond_vertical], x_grid_coords[cond_vertical]]
+                                    prev_grid_coords_x, y_overlap_idx)
     W = update_W_by_condition(W, W_V, x_grid_coords, y_grid_coords, cond_vertical)
 
     # same for diagonal
@@ -179,20 +178,18 @@ def compensate_mean_and_age(temp_means, temp_ages, prev_means, prev_ages, W, W_H
     cond_diagonal = (y_overlap_idx >= 0) & (y_overlap_idx < model_height) & (x_overlap_idx >= 0) & (
             x_overlap_idx < model_width)
     temp_means = update_by_condition(cond_diagonal, temp_means, prev_means, W_HV, x_grid_coords, y_grid_coords,
-                                          x_overlap_idx, y_overlap_idx)
+                                     x_overlap_idx, y_overlap_idx)
     temp_ages = update_by_condition(cond_diagonal, temp_ages, prev_ages, W_HV, x_grid_coords, y_grid_coords,
-                                          x_overlap_idx, y_overlap_idx)
-    # W[:, y_grid_coords[cond_diagonal], x_grid_coords[cond_diagonal]] += W_HV[
-    #     y_grid_coords[cond_diagonal], x_grid_coords[cond_diagonal]]
+                                    x_overlap_idx, y_overlap_idx)
     W = update_W_by_condition(W, W_HV, x_grid_coords, y_grid_coords, cond_diagonal)
 
     # same for closest center
     cond_self = (prev_grid_coords_y >= 0) & (prev_grid_coords_y < model_height) & (prev_grid_coords_x >= 0) & (
             prev_grid_coords_x < model_width)
     temp_means = update_by_condition(cond_self, temp_means, prev_means, W_self, x_grid_coords, y_grid_coords,
-                                          prev_grid_coords_x, prev_grid_coords_y)
+                                     prev_grid_coords_x, prev_grid_coords_y)
     temp_ages = update_by_condition(cond_self, temp_ages, prev_ages, W_self, x_grid_coords, y_grid_coords,
-                                          prev_grid_coords_x, prev_grid_coords_y)
+                                    prev_grid_coords_x, prev_grid_coords_y)
 
     W = update_W_by_condition(W, W_self, x_grid_coords, y_grid_coords, cond_self)
 
@@ -203,26 +200,26 @@ def compensate_mean_and_age(temp_means, temp_ages, prev_means, prev_ages, W, W_H
 def compensate_var(prev_vars, prev_means, means, W_H, W_V, W_HV, W_self, x_grid_coords, y_grid_coords,
                    prev_grid_coords_x, prev_grid_coords_y, offset_x, offset_y, cond_horizontal, cond_vertical,
                    cond_diagonal, cond_self):
-
-    x_overlap_idx = prev_grid_coords_x + np.sign(offset_x).astype(np.int32)  # figure out X direction of jumping, taking the overlaping center index in X
+    x_overlap_idx = prev_grid_coords_x + np.sign(offset_x).astype(
+        np.int32)  # figure out X direction of jumping, taking the overlapping center index in X
     y_overlap_idx = prev_grid_coords_y + np.sign(offset_y).astype(np.int32)
-    temp_var = np.zeros(prev_means.shape)
+    temp_var = np.zeros(prev_means.shape, dtype=prev_vars.dtype)
 
     temp_var = update_var_by_condition(cond_horizontal, temp_var, prev_vars, prev_means, means,
-                                                   W_H, x_grid_coords, y_grid_coords, x_overlap_idx,
-                                                   prev_grid_coords_y)
+                                       W_H, x_grid_coords, y_grid_coords, x_overlap_idx,
+                                       prev_grid_coords_y)
 
     temp_var = update_var_by_condition(cond_vertical, temp_var, prev_vars, prev_means, means,
-                                                   W_V, x_grid_coords, y_grid_coords, prev_grid_coords_x,
-                                                   y_overlap_idx)
+                                       W_V, x_grid_coords, y_grid_coords, prev_grid_coords_x,
+                                       y_overlap_idx)
 
     temp_var = update_var_by_condition(cond_diagonal, temp_var, prev_vars, prev_means, means, W_HV,
-                                                   x_grid_coords, y_grid_coords, x_overlap_idx,
-                                                   y_overlap_idx)
+                                       x_grid_coords, y_grid_coords, x_overlap_idx,
+                                       y_overlap_idx)
 
     temp_var = update_var_by_condition(cond_self, temp_var, prev_vars, prev_means, means, W_self,
-                                                   x_grid_coords, y_grid_coords, prev_grid_coords_x,
-                                                   prev_grid_coords_y)
+                                       x_grid_coords, y_grid_coords, prev_grid_coords_x,
+                                       prev_grid_coords_y)
 
     return temp_var
 
@@ -231,7 +228,7 @@ def compensate_var(prev_vars, prev_means, means, W_H, W_V, W_HV, W_self, x_grid_
 def enlarge_pixels(input_array, b_size):
     rows = input_array.shape[0]
     cols = input_array.shape[1]
-    enlarged_array = np.zeros((rows * b_size, cols * b_size), dtype=np.float64)
+    enlarged_array = np.zeros((rows * b_size, cols * b_size), dtype=input_array.dtype)
 
     for i in range(b_size):
         for j in range(b_size):
@@ -270,4 +267,144 @@ def get_chosen_means(means, model_index, jj, ii):
     return mns
 
 
+@jit(nopython=True, parallel=True)
+def rebinMean(arr, factor):
+    new_shape = (arr.shape[0] // factor[0], factor[0], arr.shape[1] // factor[1], factor[1])
+    res = np.empty((new_shape[0], new_shape[2]), dtype=np.float32)
 
+    for i in prange(new_shape[0]):
+        for j in prange(new_shape[2]):
+            total = 0.0
+            for k in prange(factor[0]):
+                for l in prange(factor[1]):
+                    total += arr[i * factor[0] + k, j * factor[1] + l]
+            res[i, j] = total / (factor[0] * factor[1])
+    return res
+
+
+@jit(nopython=True, parallel=True)
+def update_vars_numba(means, ages, com_vars, alpha, gray_image: np.ndarray, models_to_update, model_index, h, w,
+                      block_size, var_init, var_trim):
+    jj, ii = np.arange(h * w) // w, np.arange(h * w) % w
+    mns = get_chosen_means(means, model_index, jj, ii)
+    mns = reshape_to_2d_array_numba(mns, (h, w))
+    big_mean_index = enlarge_pixels(mns, block_size)  # extande the chosen models means upon the whole grid
+    res = np.power(gray_image - big_mean_index, 2)
+    maxes = rebinMax(res, (block_size, block_size))  # calc V for each grid for chosen model
+    vars = com_vars * alpha + (1 - alpha) * maxes
+    for k in prange(vars.shape[0]):
+        for j in prange(vars.shape[1]):
+            for i in prange(vars.shape[2]):
+                if vars[k, j, i] < var_init and ages[k, j, i] == 0 and models_to_update[k, j, i]:
+                    vars[k, j, i] = var_init
+                if vars[k, j, i] < var_trim and models_to_update[k, j, i]:
+                    vars[k, j, i] = var_trim
+    return vars
+
+
+@jit(nopython=True)
+def update_means(com_means, alpha, cur_mean):
+    """
+    update the means according to eq (1)
+    :param means: the object means
+    :param com_means: compensated means
+    :param alpha: the coefficient of mu in eq (1): a_com(t-1) / [a_com(t-1) + 1]
+    :param cur_mean: the current mean as explained before
+    """
+    means = com_means * alpha + cur_mean * (1 - alpha)  # update mean
+    return means
+
+
+@jit(nopython=True)
+def calc_probability(gray, det, temporal_property, spatial_property):
+    neighborhood_size = (5, 5)
+    kernel = np.ones(neighborhood_size) / (neighborhood_size[0] * neighborhood_size[1])
+    alpha = 0.3
+
+    temporal_property = alpha * temporal_property + (1 - alpha) * det / 255
+    spatial_property = alpha * spatial_property + (1 - alpha) * \
+                       convolve2d_with_padding(gray / 255, kernel)
+    probs = temporal_property * spatial_property
+    out = (probs * 255).astype(np.uint8)
+    return out
+
+
+@jit(nopython=True, parallel=True)
+def suppression(gray, out, theta_d):
+    mn = np.mean(gray)
+    std = np.std(gray)
+
+    sqrt_theta_d = np.sqrt(theta_d)
+    threshold = mn + sqrt_theta_d * std
+
+    rows, cols = gray.shape
+    for i in prange(rows):
+        for j in prange(cols):
+            if gray[i, j] < threshold:
+                out[i, j] = 0
+    return out
+
+
+@jit(nopython=True, parallel=True)
+def rebinMax(arr: np.ndarray, factor: tuple) -> np.ndarray:
+    # identicle to rebin + max
+    rows, cols = arr.shape[:2]
+    res = np.zeros((rows // factor[0], cols // factor[1]), dtype=arr.dtype)
+
+    for i in prange(0, rows // factor[0]):
+        for j in prange(0, cols // factor[1]):
+            max_val = arr[i * factor[0]:(i + 1) * factor[0], j * factor[1]:(j + 1) * factor[1]].max()
+            res[i, j] = max_val
+    return res
+
+
+@jit(nopython=True)
+def get_alpha(com_ages, models_to_update):
+    """
+    calc coefficient of the paper
+    :param com_ages: compensated ages
+    :param models_to_update:  the indexes of the chosen models to update
+    :return: coefficient
+    """
+    rows, cols, depth = com_ages.shape  # Assuming com_ages and models_to_update have the same shape
+
+    alpha = np.zeros_like(com_ages)
+
+    for i in range(rows):
+        for j in range(cols):
+            for k in range(depth):
+                alpha_val = com_ages[i, j, k] / (com_ages[i, j, k] + 1)
+
+                if com_ages[i, j, k] < 1:
+                    alpha_val = 0
+
+                if not models_to_update[i, j, k]:
+                    alpha_val = 1
+
+                alpha[i, j, k] = alpha_val
+
+    return alpha
+
+
+@jit(nopython=True)
+def calc_by_thresh(gray, big_means, big_vars, big_ages, theta):
+    """
+    decide each pixels are foreground by thresholding as in eq (16)
+    :param gray: the image
+    :param big_means: documented in other functions
+    :param big_vars: documented in other functions
+    :param big_ages: documented in other functions
+    :param theta: the threshold
+    :return: foreground-background matrix
+    """
+    rows, cols = gray.shape
+    dist_img = np.power(gray - big_means, 2)
+    out = np.zeros((rows, cols), dtype=np.uint8)
+
+    for i in range(rows):
+        for j in range(cols):
+            if big_ages[i, j] > 1 and dist_img[i, j] > theta * big_vars[i, j]:
+                out[i, j] = 255
+            else:
+                out[i, j] = 0
+    return out

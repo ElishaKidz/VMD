@@ -7,6 +7,7 @@ from VMD.detections import detectors
 from VMD.stabilization import stabilizers
 from VMD.foreground import foreground_estimators
 from SoiUtils.load import load_yaml
+import time
 
 
 class VMD:
@@ -28,28 +29,27 @@ class VMD:
         frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
         stabilized_frame = self.video_stabilization_obj(frame)
+        s = time.time()
         foreground_estimation = self.foreground_estimation_obj(stabilized_frame)
+        e = time.time()
         binary_foreground_estimation = self.binary_frame_creator_obj(foreground_estimation)
         frame_bboxes = self.bbox_creator_obj(binary_foreground_estimation)
         logging.debug(f'frame number {self.frame_counter}')
+        self.time += e - s
         self.frame_counter += 1
         return frame_bboxes
     
     def reset(self):
-        if hasattr(self.video_stabilization_obj,VMD.RESET_FN_NAME):
+        self.frame_counter = 0
+        self.time = 0
+        if hasattr(self.video_stabilization_obj, VMD.RESET_FN_NAME):
             self.video_stabilization_obj.reset()
 
-        if hasattr(self.binary_frame_creator_obj,VMD.RESET_FN_NAME):
+        if hasattr(self.binary_frame_creator_obj, VMD.RESET_FN_NAME):
             self.binary_frame_creator_obj.reset()
         
-        if hasattr(self.bbox_creator_obj,VMD.RESET_FN_NAME):
+        if hasattr(self.bbox_creator_obj, VMD.RESET_FN_NAME):
             self.bbox_creator_obj.reset()
         
-        if hasattr(self.foreground_estimation_obj,VMD.RESET_FN_NAME):
+        if hasattr(self.foreground_estimation_obj, VMD.RESET_FN_NAME):
             self.foreground_estimation_obj.reset()
-        
-        
-        
-        
-        
-        

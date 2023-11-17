@@ -60,6 +60,8 @@ class ForegroundEstimetor:
         self.num_frames = 0
         self.com_time = 0
         self.stat_time = 0
+        self.h_time = 0
+        self.total_time = 0
 
         self.compile()
 
@@ -75,9 +77,11 @@ class ForegroundEstimetor:
         self.num_frames = 0
         self.com_time = 0
         self.stat_time = 0
+        self.h_time = 0
+        self.total_time = 0
 
     def compile(self):
-        gray = np.ones((256, 256))
+        gray = np.ones((512, 640), dtype=np.uint8)
         self.first_pass(gray)
         self.reset()
 
@@ -94,13 +98,14 @@ class ForegroundEstimetor:
         self.model_height, self.model_width = h // self.block_size, w // self.block_size   # calc num of grid in each axis
 
         # create models
-        self.compensation_models = CompensationModel(self.num_models, self.model_height, self.model_width,
-                                                     self.block_size, self.var_init, self.var_trim, self.lam,
-                                                     self.theta_v)
-        self.statistical_models = StatisticalModel(self.num_models, self.model_height, self.model_width,
-                                                   self.block_size, self.var_init, self.var_trim, self.age_trim,
-                                                   self.theta_s, self.theta_d, self.dynamic, self.calc_probs,
-                                                   self.sensitivity, self.suppress)
+        if self.compensation_models is None or self.statistical_models is None:
+            self.compensation_models = CompensationModel(self.num_models, self.model_height, self.model_width,
+                                                         self.block_size, self.var_init, self.var_trim, self.lam,
+                                                         self.theta_v)
+            self.statistical_models = StatisticalModel(self.num_models, self.model_height, self.model_width,
+                                                       self.block_size, self.var_init, self.var_trim, self.age_trim,
+                                                       self.theta_s, self.theta_d, self.dynamic, self.calc_probs,
+                                                       self.sensitivity, self.suppress)
 
         # initialize homography calculator
         self.homography_calculator.init(gray_frame)
@@ -111,7 +116,8 @@ class ForegroundEstimetor:
 
         com_means, com_vars, com_ages = self.compensation_models.init(inited_means, inited_vars,
                                                                       inited_ages)
-        return self.statistical_models.get_foreground(gray_frame, com_means, com_vars, com_ages)
+        foreground = self.statistical_models.get_foreground(gray_frame, com_means, com_vars, com_ages)
+        return foreground
 
     def get_foreground(self, gray_frame):
         """
@@ -119,17 +125,24 @@ class ForegroundEstimetor:
         :param gray_frame: a gray frame
         :return: foreground estimation
         """
+        self.num_frames += 1
+        s = time.time()
         if self.is_first:   # if first frame initialize
-            return self.first_pass(gray_frame)
+            x = self.first_pass(gray_frame)
+            e = time.time()
+            self.total_time += e - s
+            return x
 
         if self.smooth:
             gray_frame = cv2.medianBlur(gray_frame, 5)
             # gray_frame = cv2.GaussianBlur(gray_frame, (7, 7), 0)
-        self.num_frames += 1
 
         # compensate
         prev_means, prev_vars, prev_ages = self.statistical_models.get_models()
+        s0 = time.time()
         H = self.homography_calculator.RunTrack(gray_frame)
+        e0 = time.time()
+        self.h_time += e0 - s0
 
         s1 = time.time()
         com_means, com_vars, com_ages = self.compensation_models.compensate(H, prev_means, prev_vars, prev_ages)
@@ -140,6 +153,10 @@ class ForegroundEstimetor:
         foreground = self.statistical_models.get_foreground(gray_frame, com_means, com_vars, com_ages)
         e2 = time.time()
         self.stat_time += e2 - e1
+
+        e = time.time()
+        self.total_time += e - s
+
         return foreground
 
     def __call__(self, gray_frame):

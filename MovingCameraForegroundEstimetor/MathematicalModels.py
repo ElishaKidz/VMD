@@ -7,7 +7,6 @@ class BaseModel:
     """
     parent class for the compensation model and the statistics model
     """
-
     def __init__(self, num_models, model_height, model_width, block_size, var_init, var_trim):
         """
         see foreground model init for documentation
@@ -30,9 +29,9 @@ class BaseModel:
         """
         create zero params of size of the models and the grids
         """
-        self.means = np.zeros((self.num_models, self.model_height, self.model_width))
-        self.vars = np.zeros((self.num_models, self.model_height, self.model_width))
-        self.ages = np.zeros((self.num_models, self.model_height, self.model_width))
+        self.means = np.zeros((self.num_models, self.model_height, self.model_width), dtype=np.float32)
+        self.vars = np.zeros((self.num_models, self.model_height, self.model_width), dtype=np.float32)
+        self.ages = np.zeros((self.num_models, self.model_height, self.model_width), dtype=np.float32)
 
     def get_models(self):
         """
@@ -53,14 +52,14 @@ class CompensationModel(BaseModel):
 
     def init(self, means, vars, ages):
         super(CompensationModel, self).init()
-        H = np.identity(3)
+        H = np.identity(3, dtype=np.float32)
         self.get_grid_coords_and_points()
         return self.compensate(H, means, vars, ages)
 
     def get_grid_coords_and_points(self):
         self.x_grid_coords, self.y_grid_coords = utils.get_grid_coords(self.model_width, self.model_height)
         self.points = np.asarray([self.x_grid_coords * self.block_size + self.block_size / 2, self.y_grid_coords * self.block_size +
-                             self.block_size / 2, np.ones(len(self.x_grid_coords))])  # current frame grid centers 3D
+                             self.block_size / 2, np.ones(len(self.x_grid_coords))], dtype=np.float32)  # current frame grid centers 3D
 
     def get_weights_for_directions(self, abs_offset_x, abs_offset_y):
         """
@@ -90,7 +89,6 @@ class CompensationModel(BaseModel):
             W[y_grid_coords[cond], x_grid_coords[cond]] * \
             prev[:, grid_overlap_y[cond],
             grid_overlap_x[cond]]  # weighted mean for the direction overlaping
-        # utils_numba.update_by_condition(cond, temp, prev, W, x_grid_coords, y_grid_coords, grid_overlap_x, grid_overlap_y)
 
     def compensate_mean_and_age(self, temp_means, temp_ages, prev_means, prev_ages, W, W_H, W_V, W_HV, W_self,
                                 x_grid_coords, y_grid_coords, prev_grid_coords_x, prev_grid_coords_y, offset_x,
@@ -188,10 +186,10 @@ class CompensationModel(BaseModel):
 
           # the normalized weight of this crop
 
-        W = np.zeros((self.num_models, self.model_height, self.model_width))
+        W = np.zeros((self.num_models, self.model_height, self.model_width), dtype=np.float32)
 
-        temp_means = np.zeros(prev_means.shape)
-        temp_ages = np.zeros(prev_means.shape)
+        temp_means = np.zeros_like(prev_means)
+        temp_ages = np.zeros_like(prev_means)
         W, temp_means, temp_ages, cond_horizontal, cond_vertical, cond_diagonal, cond_self = \
             utils_numba.compensate_mean_and_age(temp_means, temp_ages, prev_means, prev_ages, W, W_H, W_V, W_HV, W_self,
                                              self.x_grid_coords, self.y_grid_coords, prev_x_grid_coords, prev_y_grid_coords,
@@ -248,118 +246,10 @@ class StatisticalModel(BaseModel):
 
     def init(self):
         super(StatisticalModel, self).init()
-        self.temporal_property = np.zeros((self.model_height * self.block_size, self.model_width * self.block_size))
-        self.spatial_property = np.zeros((self.model_height * self.block_size, self.model_width * self.block_size))
-
-    @staticmethod
-    @jit(nopython=True, parallel=True)
-    def rebinMean(arr, factor):
-        new_shape = (arr.shape[0] // factor[0], factor[0], arr.shape[1] // factor[1], factor[1])
-        res = np.empty((new_shape[0], new_shape[2]), dtype=arr.dtype)
-
-        for i in prange(new_shape[0]):
-            for j in prange(new_shape[2]):
-                total = 0.0
-                for k in prange(factor[0]):
-                    for l in prange(factor[1]):
-                        total += arr[i * factor[0] + k, j * factor[1] + l]
-                res[i, j] = total / (factor[0] * factor[1])
-        return res
-
-    @staticmethod
-    @jit(nopython=True, parallel=True)
-    def rebinMax(arr: np.ndarray, factor: tuple) -> np.ndarray:
-        # identicle to rebin + max
-        rows, cols = arr.shape[:2]
-        res = np.zeros((rows // factor[0], cols // factor[1]), dtype=arr.dtype)
-
-        for i in prange(0, rows // factor[0]):
-            for j in prange(0, cols // factor[1]):
-                max_val = arr[i * factor[0]:(i + 1) * factor[0], j * factor[1]:(j + 1) * factor[1]].max()
-                res[i, j] = max_val
-        return res
-
-    @staticmethod
-    @jit(nopython=True)
-    def get_alpha(com_ages, models_to_update):
-        """
-        calc coefficient of the paper
-        :param com_ages: compensated ages
-        :param models_to_update:  the indexes of the chosen models to update
-        :return: coefficient
-        """
-        rows, cols, depth = com_ages.shape  # Assuming com_ages and models_to_update have the same shape
-
-        alpha = np.zeros_like(com_ages)
-
-        for i in range(rows):
-            for j in range(cols):
-                for k in range(depth):
-                    alpha_val = com_ages[i, j, k] / (com_ages[i, j, k] + 1)
-
-                    if com_ages[i, j, k] < 1:
-                        alpha_val = 0
-
-                    if not models_to_update[i, j, k]:
-                        alpha_val = 1
-
-                    alpha[i, j, k] = alpha_val
-
-        return alpha
-
-    @staticmethod
-    @jit(nopython=True)
-    def calc_by_thresh(gray, big_means, big_vars, big_ages, theta):
-        """
-        decide each pixels are foreground by thresholding as in eq (16)
-        :param gray: the image
-        :param big_means: documented in other functions
-        :param big_vars: documented in other functions
-        :param big_ages: documented in other functions
-        :param theta: the threshold
-        :return: foreground-background matrix
-        """
-        rows, cols = gray.shape
-        dist_img = np.power(gray - big_means, 2)
-        out = np.zeros((rows, cols), dtype=np.uint8)
-
-        for i in range(rows):
-            for j in range(cols):
-                if big_ages[i, j] > 1 and dist_img[i, j] > theta * big_vars[i, j]:
-                    out[i, j] = 255
-                else:
-                    out[i, j] = 0
-        return out
-
-    @staticmethod
-    @jit(nopython=True, parallel=True)
-    def suppression(gray, out, theta_d):
-        mn = np.mean(gray)
-        std = np.std(gray)
-
-        sqrt_theta_d = np.sqrt(theta_d)
-        threshold = mn + sqrt_theta_d * std
-
-        rows, cols = gray.shape
-        for i in prange(rows):
-            for j in prange(cols):
-                if gray[i, j] < threshold:
-                    out[i, j] = 0
-        return out
-
-    @staticmethod
-    @jit(nopython=True)
-    def calc_probability(gray, det, temporal_property, spatial_property):
-        neighborhood_size = (5, 5)
-        kernel = np.ones(neighborhood_size) / (neighborhood_size[0] * neighborhood_size[1])
-        alpha = 0.3
-
-        temporal_property = alpha * temporal_property + (1 - alpha) * det / 255
-        spatial_property = alpha * spatial_property + (1 - alpha) * \
-                                utils_numba.convolve2d_with_padding(gray / 255, kernel)
-        probs = temporal_property * spatial_property
-        out = (probs * 255).astype(np.uint8)
-        return out
+        self.temporal_property = np.zeros((self.model_height * self.block_size, self.model_width * self.block_size),
+                                          dtype=np.float32)
+        self.spatial_property = np.zeros((self.model_height * self.block_size, self.model_width * self.block_size),
+                                         dtype=np.float32)
 
     def choose_models_for_update(self, cur_mean, com_means, com_vars, com_ages):
         """
@@ -370,8 +260,7 @@ class StatisticalModel(BaseModel):
         :param com_ages:    compensated ages
         :return: the chosen models for updating
         """
-        models_with_max_age = self.num_models - np.argmax(com_ages[::-1], axis=0).reshape(
-            -1) - 1  # find maximums of ages
+        models_with_max_age = self.num_models - np.argmax(com_ages[::-1], axis=0).reshape(-1) - 1  # find maximums of ages
         maxes = np.max(com_ages, axis=0)
         h, w = self.model_height, self.model_width
         jj, ii = np.arange(h * w) // w, np.arange(h * w) % w  # indices of grids
@@ -402,19 +291,6 @@ class StatisticalModel(BaseModel):
         models_to_update = np.arange(self.means.shape[0]).reshape(-1, 1, 1) == model_index  # which model to take as a 3d matrix with trues and falses in the entries
         return models_to_update, model_index
 
-    @staticmethod
-    @jit(nopython=True)
-    def update_means(com_means, alpha, cur_mean):
-        """
-        update the means according to eq (1)
-        :param means: the object means
-        :param com_means: compensated means
-        :param alpha: the coefficient of mu in eq (1): a_com(t-1) / [a_com(t-1) + 1]
-        :param cur_mean: the current mean as explained before
-        """
-        means = com_means * alpha + cur_mean * (1 - alpha)  # update mean
-        return means
-
     def update_vars(self, com_vars, alpha, gray_image, models_to_update, model_index):
         """
         update the variance according to eq (2)
@@ -429,31 +305,11 @@ class StatisticalModel(BaseModel):
         mns = utils_numba.get_chosen_means(self.means, model_index, jj, ii)
         mns = utils_numba.reshape_to_2d_array_numba(mns, (self.model_height, self.model_width))
         big_mean_index = utils_numba.enlarge_pixels(mns, self.block_size)  # extande the chosen models means upon the whole grid
-        maxes = StatisticalModel.rebinMax(np.power(gray_image - big_mean_index, 2),
+        maxes = utils_numba.rebinMax(np.power(gray_image - big_mean_index, 2),
                                           (self.block_size, self.block_size))  # calc V for each grid for chosen model
         self.vars = com_vars * alpha + (1 - alpha) * maxes
         self.vars[(self.vars < self.var_init) & models_to_update & (self.ages == 0)] = self.var_init
         self.vars[(self.vars < self.var_trim) & models_to_update] = self.var_trim
-
-    @staticmethod
-    @jit(nopython=True, parallel=True)
-    def update_vars_numba(means, ages, com_vars, alpha, gray_image: np.ndarray, models_to_update, model_index, h, w,
-                          block_size, var_init, var_trim):
-        jj, ii = np.arange(h * w) // w, np.arange(h * w) % w
-        mns = utils_numba.get_chosen_means(means, model_index, jj, ii)
-        mns = utils_numba.reshape_to_2d_array_numba(mns, (h, w))
-        big_mean_index = utils_numba.enlarge_pixels(mns, block_size)  # extande the chosen models means upon the whole grid
-        res = np.power(gray_image - big_mean_index, 2)
-        maxes = StatisticalModel.rebinMax(res, (block_size, block_size))  # calc V for each grid for chosen model
-        vars = com_vars * alpha + (1 - alpha) * maxes
-        for k in prange(vars.shape[0]):
-            for j in prange(vars.shape[1]):
-                for i in prange(vars.shape[2]):
-                    if vars[k, j, i] < var_init and ages[k, j, i] == 0 and models_to_update[k, j, i]:
-                        vars[k, j, i] = var_init
-                    if vars[k, j, i] < var_trim and models_to_update[k, j, i]:
-                        vars[k, j, i] = var_trim
-        return vars
 
     def update_ages(self, com_ages, models_to_update):
         """
@@ -477,9 +333,9 @@ class StatisticalModel(BaseModel):
         :param com_ages: compensated ages
         """
         # calculate coefficients
-        alpha = StatisticalModel.get_alpha(com_ages, models_to_update)
+        alpha = utils_numba.get_alpha(com_ages, models_to_update)
 
-        self.means = StatisticalModel.update_means(com_means, alpha, cur_mean)
+        self.means = utils_numba.update_means(com_means, alpha, cur_mean)
         self.update_vars(com_vars, alpha, gray_image, models_to_update, model_index)
         self.update_ages(com_ages, models_to_update)
 
@@ -495,8 +351,8 @@ class StatisticalModel(BaseModel):
         :param com_ages: compensated ages
         :return: chosen pixels to be foregrounded
         """
-        alpha = StatisticalModel.get_alpha(com_ages, models_to_update)
-        self.means = StatisticalModel.update_means(com_means, alpha, cur_mean)
+        alpha = utils_numba.get_alpha(com_ages, models_to_update)
+        self.means = utils_numba.update_means(com_means, alpha, cur_mean)
         out = self.choose_foreground(gray)
 
         self.update_vars(com_vars, alpha, gray, models_to_update, model_index)
@@ -515,12 +371,12 @@ class StatisticalModel(BaseModel):
         big_vars = utils_numba.enlarge_pixels(self.vars[0], self.block_size)  # same for vars
 
         if self.calc_probs:
-            out = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
-            out = StatisticalModel.calc_probability(gray, out, self.temporal_property, self.spatial_property)
+            out = utils_numba.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
+            out = utils_numba.calc_probability(gray, out, self.temporal_property, self.spatial_property)
         else:
-            out = StatisticalModel.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
+            out = utils_numba.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
         if self.suppress:
-            out = StatisticalModel.suppression(gray, out, self.theta_d)
+            out = utils_numba.suppression(gray, out, self.theta_d)
         return out
 
     def get_foreground(self, gray, com_means, com_vars, com_ages):
@@ -533,7 +389,7 @@ class StatisticalModel(BaseModel):
         :return: chosen foreground pixels
         """
         self.num_frames += 1
-        cur_mean = StatisticalModel.rebinMean(gray, (self.block_size, self.block_size))
+        cur_mean = utils_numba.rebinMean(gray, (self.block_size, self.block_size))
 
         models_to_update, model_index = self.choose_models_for_update(cur_mean, com_means, com_vars, com_ages)
 
