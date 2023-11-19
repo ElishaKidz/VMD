@@ -114,7 +114,7 @@ class PESMODForegroundEstimation():
         return foreground
 
     def reset(self):
-        self.frames_history = None
+        self.frames_history = deque()
 
 
 
