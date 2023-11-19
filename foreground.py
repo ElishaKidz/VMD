@@ -4,6 +4,7 @@ from skimage.util import view_as_windows
 from VMD.MovingCameraForegroundEstimetor.ForegroundEstimetor import ForegroundEstimetor
 from time import time
 from numba import jit, prange
+from collections import deque
 
 foreground_estimators = {}
 
@@ -66,7 +67,7 @@ class MOG2():
 class PESMODForegroundEstimation():
     def __init__(self, neighborhood_matrix: tuple = (3, 3), num_frames=10, suppress=False) -> None:
         self.neighborhood_matrix = neighborhood_matrix
-        self.frames_history = None
+        self.frames_history = deque()
         self.num_frames = num_frames
         self.suppress = suppress
         self.filter_w, self.filter_h = self.neighborhood_matrix
@@ -82,8 +83,8 @@ class PESMODForegroundEstimation():
         difference(temp1, temp2)
 
     def __call__(self, frame):
-        if self.frames_history is None:
-            self.frames_history = np.expand_dims(frame,axis=0)
+        if len(self.frames_history) == 0:
+            self.frames_history.append(frame)
             self.window_sum = self.frames_history[-1].astype(np.int32)
             foreground = frame
         else:
@@ -103,17 +104,17 @@ class PESMODForegroundEstimation():
                 std = np.std(frame)
                 foreground[frame < mn + std] = 0
 
-            self.frames_history = np.append(self.frames_history,np.expand_dims(frame, axis=0), axis=0)
+            self.frames_history.append(frame)
 
-            if self.frames_history.shape[0]> self.num_frames:
+            if len(self.frames_history) > self.num_frames:
                 self.window_sum -= self.frames_history[0]
-                self.frames_history = self.frames_history[1:]
+                self.frames_history.popleft()
 
             self.window_sum += self.frames_history[-1]
         return foreground
 
     def reset(self):
-        self.frames_history = None
+        self.frames_history = deque()
 
 
 
