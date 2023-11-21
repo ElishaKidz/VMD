@@ -34,15 +34,9 @@ class OpticalFlowStabilization:
                 self.rotation_matrix_buffer.pop(0)
             rotation_mat = np.mean(self.rotation_matrix_buffer, axis=0)
 
-        # Rotate the frame.
-        if rotation_mat is not None:
-            rotated_frame = self.rotate_frame(single_channel_frame, rotation_mat)
-        else:
-            rotated_frame = single_channel_frame
-
         self.previous_single_channel_frame = single_channel_frame
 
-        return rotated_frame
+        return rotation_mat
 
     def get_rotation_mat(self, frame):
         # Assumes that the frame consists onlu of 1 channel i.e (w,h)
@@ -80,11 +74,7 @@ class OpticalFlowStabilization:
         # Update the previous gray frame to the next call.
 
         return rot_mat
-
-    @staticmethod
-    def rotate_frame(frame, rot_mat):
-        rotated_frame = cv.warpPerspective(frame, rot_mat, (frame.shape[1], frame.shape[0]))
-        return rotated_frame
+    
     
     def reset(self):
         self.previous_single_channel_frame = None

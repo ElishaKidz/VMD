@@ -21,7 +21,7 @@ def main(vmd_obj, video_cap, save_detections_file=None, rendered_video_file_path
         frame_bboxes = frame_bboxes.assign(frame_num=frame_num)
         records.append(frame_bboxes)
 
-    video_bboxes_df = pd.concat(records).astype('int32')
+    video_bboxes_df = pd.concat(records).astype('float32')
 
     if save_detections_file is not None:
         video_bboxes_df.to_csv(save_detections_file)
