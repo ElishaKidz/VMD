@@ -38,4 +38,4 @@ foreground_estimator:
     calc_probs: False
     sensitivity: False  # 'mixed' , True or False
     suppress: True
-    smooth: True
+    smooth: False
