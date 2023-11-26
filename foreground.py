@@ -117,7 +117,6 @@ class PESMODForegroundEstimation():
         self.frames_history = deque()
 
 
-
 @jit(nopython=True, parallel=True)
 def difference(background_patches, broadcasted_frame):
     h, w = broadcasted_frame.shape[2], broadcasted_frame.shape[3]
