@@ -65,6 +65,32 @@ class ForegroundEstimetor:
 
         self.compile()
 
+    def update(self, num_models: int = 2, block_size: int = 4, var_init: float = 20.0*20.0, var_trim: float = 5.0*5.0,
+                 lam: float = 0.001, theta_v: float = 50.0*50.0, age_trim: float = 30, theta_s=2, theta_d=2,
+                 dynamic=False, calc_probs=False, sensitivity="mixed", suppress=False, smooth=True):
+        self.num_models = num_models
+        self.block_size = block_size
+        self.var_init = var_init
+        self.var_trim = var_trim
+        self.lam = lam
+        self.theta_v = theta_v
+        self.age_trim = age_trim
+        self.theta_s = theta_s
+        self.theta_d = theta_d
+        self.dynamic = dynamic
+        self.suppress = suppress
+
+        self.calc_probs = calc_probs
+        self.sensitivity = sensitivity
+        self.smooth = smooth
+
+        if self.compensation_models is not None:
+            self.compensation_models.update(var_init, var_trim, lam, theta_v)
+
+        if self.statistical_models is not None:
+            self.statistical_models.update(var_init, var_trim, age_trim, theta_s, theta_d, dynamic, calc_probs,
+                                           sensitivity, suppress)
+
     def reset(self):
         self.is_first = True
 
@@ -127,6 +153,10 @@ class ForegroundEstimetor:
         """
         self.num_frames += 1
         s = time.time()
+        new_h, new_w = gray_frame.shape
+        if new_w != self.model_width or new_h != self.model_height:
+            self.reset()
+
         if self.is_first:   # if first frame initialize
             x = self.first_pass(gray_frame)
             e = time.time()
