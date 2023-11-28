@@ -37,7 +37,7 @@ class DilateErodeBinarizer:
         return thresh_frame
 
     def update(self, diff_frame_threshold: int, dilate_kernel_size, erode_kernel_size,
-                 dilate_kwargs: dict, erode_kwargs: dict):
+                 dilate_kwargs: dict, erode_kwargs: dict, **kwargs):
         self.diff_frame_threshold = diff_frame_threshold
         self.dilate_kernel = np.ones(dilate_kernel_size)
         self.erode_kernel = np.ones(erode_kernel_size)
@@ -66,7 +66,7 @@ class FrameSuppressionDilateErodeBinarizer(DilateErodeBinarizer):
         return super(FrameSuppressionDilateErodeBinarizer, self).__call__(gray)
 
     def update(self, diff_frame_threshold: int, dilate_kernel_size, erode_kernel_size,
-                 thickness, dilate_kwargs: dict, erode_kwargs: dict):
+                 thickness, dilate_kwargs: dict, erode_kwargs: dict, **kwargs):
         super(FrameSuppressionDilateErodeBinarizer, self).update(diff_frame_threshold, dilate_kernel_size,
                                                                  erode_kernel_size, dilate_kwargs, erode_kwargs)
         self.thickness = thickness

@@ -67,9 +67,7 @@ class ForegroundEstimetor:
 
     def update(self, num_models: int, block_size: int, var_init: float, var_trim: float,
                  lam: float, theta_v: float, age_trim: float, theta_s, theta_d,
-                 dynamic, calc_probs, sensitivity, suppress, smooth):
-        self.num_models = num_models
-        self.block_size = block_size
+                 dynamic, calc_probs, sensitivity, suppress, smooth, **kwargs):
         self.var_init = var_init
         self.var_trim = var_trim
         self.lam = lam
@@ -83,6 +81,11 @@ class ForegroundEstimetor:
         self.calc_probs = calc_probs
         self.sensitivity = sensitivity
         self.smooth = smooth
+
+        if self.num_models != num_models or self.block_size != block_size:
+            self.num_models = num_models
+            self.block_size = block_size
+            self.reset()
 
         if self.compensation_models is not None:
             self.compensation_models.update(var_init, var_trim, lam, theta_v)
