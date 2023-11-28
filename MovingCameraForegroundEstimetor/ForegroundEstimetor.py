@@ -65,9 +65,9 @@ class ForegroundEstimetor:
 
         self.compile()
 
-    def update(self, num_models: int = 2, block_size: int = 4, var_init: float = 20.0*20.0, var_trim: float = 5.0*5.0,
-                 lam: float = 0.001, theta_v: float = 50.0*50.0, age_trim: float = 30, theta_s=2, theta_d=2,
-                 dynamic=False, calc_probs=False, sensitivity="mixed", suppress=False, smooth=True):
+    def update(self, num_models: int, block_size: int, var_init: float, var_trim: float,
+                 lam: float, theta_v: float, age_trim: float, theta_s, theta_d,
+                 dynamic, calc_probs, sensitivity, suppress, smooth):
         self.num_models = num_models
         self.block_size = block_size
         self.var_init = var_init
