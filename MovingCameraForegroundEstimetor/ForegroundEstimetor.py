@@ -4,9 +4,10 @@ import numpy as np
 from VMD.MovingCameraForegroundEstimetor.MathematicalModels import CompensationModel, StatisticalModel
 from VMD.MovingCameraForegroundEstimetor.KLTWrapper import KLTWrapper
 import cv2
+from SoiUtils.interfaces import Resetable, Updatable
 
 
-class ForegroundEstimetor:
+class ForegroundEstimetor(Resetable, Updatable):
     """
     Moving camera foreground estimator class, gets a grayscale frame and returns foreground pixels or
     probabilities for pixels tp be foreground
@@ -68,6 +69,7 @@ class ForegroundEstimetor:
     def update(self, num_models: int, block_size: int, var_init: float, var_trim: float,
                  lam: float, theta_v: float, age_trim: float, theta_s, theta_d,
                  dynamic, calc_probs, sensitivity, suppress, smooth, **kwargs):
+        print("vmd update")
         self.var_init = var_init
         self.var_trim = var_trim
         self.lam = lam
@@ -95,6 +97,7 @@ class ForegroundEstimetor:
                                            sensitivity, suppress)
 
     def reset(self):
+        print("vmd reset")
         self.is_first = True
 
         self.homography_calculator = KLTWrapper()
@@ -157,7 +160,7 @@ class ForegroundEstimetor:
         self.num_frames += 1
         s = time.time()
         new_h, new_w = gray_frame.shape
-        if new_w != self.model_width or new_h != self.model_height:
+        if new_w // self.block_size != self.model_width or new_h // self.block_size != self.model_height:
             self.reset()
 
         if self.is_first:   # if first frame initialize
