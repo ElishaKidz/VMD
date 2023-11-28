@@ -69,7 +69,6 @@ class ForegroundEstimetor(Resetable, Updatable):
     def update(self, num_models: int, block_size: int, var_init: float, var_trim: float,
                  lam: float, theta_v: float, age_trim: float, theta_s, theta_d,
                  dynamic, calc_probs, sensitivity, suppress, smooth, **kwargs):
-        print("vmd update")
         self.var_init = var_init
         self.var_trim = var_trim
         self.lam = lam
@@ -97,7 +96,6 @@ class ForegroundEstimetor(Resetable, Updatable):
                                            sensitivity, suppress)
 
     def reset(self):
-        print("vmd reset")
         self.is_first = True
 
         self.homography_calculator = KLTWrapper()
