@@ -12,8 +12,6 @@ import time
 
 
 class VMD:
-    RESET_FN_NAME = 'reset'
-    UPDATE_FN_NAME = 'update'
 
     def __init__(self, stabilizer, binarizer, detector, foreground_estimator) -> None:
         logging.basicConfig(level=logging.DEBUG)
