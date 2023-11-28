@@ -7,22 +7,30 @@ from VMD.detections import detectors
 from VMD.stabilization import stabilizers
 from VMD.foreground import foreground_estimators
 from SoiUtils.load import load_yaml
+from SoiUtils.interfaces import Resetable, Updatable
 import time
 
 
 class VMD:
-    RESET_FN_NAME = 'reset'
-    def __init__(self, yaml_path) -> None:
+
+    def __init__(self, stabilizer, binarizer, detector, foreground_estimator) -> None:
         logging.basicConfig(level=logging.DEBUG)
-
-        vmd_params = load_yaml(yaml_path)
-
-        self.video_stabilization_obj = stabilizers[vmd_params['stabilizer']['stabilizer_name']](**vmd_params['stabilizer'].get('stabilizer_params',{}))
-        self.binary_frame_creator_obj = binarizers[vmd_params['binarizer']['binarizer_name']](**vmd_params['binarizer'].get('binarizer_params',{}))
-        self.bbox_creator_obj = detectors[vmd_params['detector']['detector_name']](**vmd_params['detector'].get('detector_params',{}))
-        self.foreground_estimation_obj = foreground_estimators[vmd_params['foreground_estimator']['foreground_estimator_name']](**vmd_params['foreground_estimator'].get('foreground_estimator_params',{}))
+        self.video_stabilization_obj = stabilizers[stabilizer['stabilizer_name']](
+            **stabilizer.get('stabilizer_params', {}))
+        self.binary_frame_creator_obj = binarizers[binarizer['binarizer_name']](
+            **binarizer.get('binarizer_params', {}))
+        self.bbox_creator_obj = detectors[detector['detector_name']](
+            **detector.get('detector_params', {}))
+        self.foreground_estimation_obj = foreground_estimators[
+            foreground_estimator['foreground_estimator_name']](
+            **foreground_estimator.get('foreground_estimator_params', {}))
         self.frame_counter = 0
         self.time = 0
+
+    @classmethod
+    def from_yaml(cls, yaml_config_path):
+        vmd_params = load_yaml(yaml_config_path)
+        return cls(**vmd_params)
 
     def __call__(self, frame):
         # the cv2 caption reads all frames defaultly as bgr therefore they are converted to gray.
@@ -35,17 +43,31 @@ class VMD:
         logging.debug(f'frame number {self.frame_counter}')
         self.frame_counter += 1
         return frame_bboxes
-    
+
     def reset(self):
         self.time = 0
-        if hasattr(self.video_stabilization_obj, VMD.RESET_FN_NAME):
+        if issubclass(type(self.video_stabilization_obj), Resetable):
             self.video_stabilization_obj.reset()
 
-        if hasattr(self.binary_frame_creator_obj, VMD.RESET_FN_NAME):
+        if issubclass(type(self.binary_frame_creator_obj), Resetable):
             self.binary_frame_creator_obj.reset()
-        
-        if hasattr(self.bbox_creator_obj, VMD.RESET_FN_NAME):
+
+        if issubclass(type(self.bbox_creator_obj), Resetable):
             self.bbox_creator_obj.reset()
-        
-        if hasattr(self.foreground_estimation_obj, VMD.RESET_FN_NAME):
+
+        if issubclass(type(self.foreground_estimation_obj), Resetable):
             self.foreground_estimation_obj.reset()
+
+    def update(self, stabilizer, binarizer, detector, foreground_estimator):
+        self.time = 0
+        if issubclass(type(self.video_stabilization_obj), Updatable):
+            self.video_stabilization_obj.update(**stabilizer.get('stabilizer_params', {}))
+
+        if issubclass(type(self.binary_frame_creator_obj), Updatable):
+            self.binary_frame_creator_obj.update(**binarizer.get('binarizer_params', {}))
+
+        if issubclass(type(self.bbox_creator_obj), Updatable):
+            self.bbox_creator_obj.update(**detector.get('detector_params', {}))
+
+        if issubclass(type(self.foreground_estimation_obj), Updatable):
+            self.foreground_estimation_obj.update(**foreground_estimator.get('foreground_estimator_params', {}))

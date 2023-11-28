@@ -52,5 +52,5 @@ if __name__ == '__main__':
 
     video_cap = create_video_capture(args.video_path)
 
-    vmd = VMD(args.config_path)
+    vmd = VMD.from_yaml(args.config_path)
     main(vmd, video_cap, args.bbox_save_path, args.rendered_video_save_path, args.frame_limit)

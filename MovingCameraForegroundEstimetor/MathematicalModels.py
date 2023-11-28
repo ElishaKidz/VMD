@@ -39,6 +39,10 @@ class BaseModel:
         """
         return self.means, self.vars, self.ages
 
+    def update(self, var_init, var_trim):
+        self.var_init = var_init
+        self.var_trim = var_trim
+
 
 class CompensationModel(BaseModel):
     def __init__(self, num_models, model_height, model_width, block_size, var_init, var_trim, lam, theta_v):
@@ -55,6 +59,11 @@ class CompensationModel(BaseModel):
         H = np.identity(3, dtype=np.float32)
         self.get_grid_coords_and_points()
         return self.compensate(H, means, vars, ages)
+
+    def update(self, var_init, var_trim, lam, theta_v):
+        super(CompensationModel, self).update(var_init, var_trim)
+        self.lam = lam
+        self.theta_v = theta_v
 
     def get_grid_coords_and_points(self):
         self.x_grid_coords, self.y_grid_coords = utils.get_grid_coords(self.model_width, self.model_height)
@@ -250,6 +259,16 @@ class StatisticalModel(BaseModel):
                                           dtype=np.float32)
         self.spatial_property = np.zeros((self.model_height * self.block_size, self.model_width * self.block_size),
                                          dtype=np.float32)
+
+    def update(self, var_init, var_trim, age_trim, theta_s, theta_d, dynamic, calc_probs, sensitivity, suppress):
+        super(StatisticalModel, self).update(var_init, var_trim)
+        self.age_trim = age_trim
+        self.theta_s = theta_s
+        self.theta_d = theta_d
+        self.dynamic = dynamic
+        self.calc_probs = calc_probs
+        self.sensitivity = sensitivity
+        self.suppress = suppress
 
     def choose_models_for_update(self, cur_mean, com_means, com_vars, com_ages):
         """

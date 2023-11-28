@@ -4,9 +4,10 @@ import numpy as np
 from VMD.MovingCameraForegroundEstimetor.MathematicalModels import CompensationModel, StatisticalModel
 from VMD.MovingCameraForegroundEstimetor.KLTWrapper import KLTWrapper
 import cv2
+from SoiUtils.interfaces import Resetable, Updatable
 
 
-class ForegroundEstimetor:
+class ForegroundEstimetor(Resetable, Updatable):
     """
     Moving camera foreground estimator class, gets a grayscale frame and returns foreground pixels or
     probabilities for pixels tp be foreground
@@ -64,6 +65,35 @@ class ForegroundEstimetor:
         self.total_time = 0
 
         self.compile()
+
+    def update(self, num_models: int, block_size: int, var_init: float, var_trim: float,
+                 lam: float, theta_v: float, age_trim: float, theta_s, theta_d,
+                 dynamic, calc_probs, sensitivity, suppress, smooth, **kwargs):
+        self.var_init = var_init
+        self.var_trim = var_trim
+        self.lam = lam
+        self.theta_v = theta_v
+        self.age_trim = age_trim
+        self.theta_s = theta_s
+        self.theta_d = theta_d
+        self.dynamic = dynamic
+        self.suppress = suppress
+
+        self.calc_probs = calc_probs
+        self.sensitivity = sensitivity
+        self.smooth = smooth
+
+        if self.num_models != num_models or self.block_size != block_size:
+            self.num_models = num_models
+            self.block_size = block_size
+            self.reset()
+
+        if self.compensation_models is not None:
+            self.compensation_models.update(var_init, var_trim, lam, theta_v)
+
+        if self.statistical_models is not None:
+            self.statistical_models.update(var_init, var_trim, age_trim, theta_s, theta_d, dynamic, calc_probs,
+                                           sensitivity, suppress)
 
     def reset(self):
         self.is_first = True
@@ -127,6 +157,10 @@ class ForegroundEstimetor:
         """
         self.num_frames += 1
         s = time.time()
+        new_h, new_w = gray_frame.shape
+        if new_w // self.block_size != self.model_width or new_h // self.block_size != self.model_height:
+            self.reset()
+
         if self.is_first:   # if first frame initialize
             x = self.first_pass(gray_frame)
             e = time.time()
