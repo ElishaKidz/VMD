@@ -7,6 +7,7 @@ from VMD.detections import detectors
 from VMD.stabilization import stabilizers
 from VMD.foreground import foreground_estimators
 from SoiUtils.load import load_yaml
+from SoiUtils.interfaces import Resetable, Updatable
 import time
 
 
@@ -47,28 +48,28 @@ class VMD:
 
     def reset(self):
         self.time = 0
-        if hasattr(self.video_stabilization_obj, VMD.RESET_FN_NAME):
+        if issubclass(type(self.video_stabilization_obj), Resetable):
             self.video_stabilization_obj.reset()
 
-        if hasattr(self.binary_frame_creator_obj, VMD.RESET_FN_NAME):
+        if issubclass(type(self.binary_frame_creator_obj), Resetable):
             self.binary_frame_creator_obj.reset()
 
-        if hasattr(self.bbox_creator_obj, VMD.RESET_FN_NAME):
+        if issubclass(type(self.bbox_creator_obj), Resetable):
             self.bbox_creator_obj.reset()
 
-        if hasattr(self.foreground_estimation_obj, VMD.RESET_FN_NAME):
+        if issubclass(type(self.foreground_estimation_obj), Resetable):
             self.foreground_estimation_obj.reset()
 
     def update(self, stabilizer, binarizer, detector, foreground_estimator):
         self.time = 0
-        if hasattr(self.video_stabilization_obj, VMD.UPDATE_FN_NAME):
+        if issubclass(type(self.video_stabilization_obj), Updatable):
             self.video_stabilization_obj.update(**stabilizer.get('stabilizer_params', {}))
 
-        if hasattr(self.binary_frame_creator_obj, VMD.UPDATE_FN_NAME):
+        if issubclass(type(self.binary_frame_creator_obj), Updatable):
             self.binary_frame_creator_obj.update(**binarizer.get('binarizer_params', {}))
 
-        if hasattr(self.bbox_creator_obj, VMD.UPDATE_FN_NAME):
+        if issubclass(type(self.bbox_creator_obj), Updatable):
             self.bbox_creator_obj.update(**detector.get('detector_params', {}))
 
-        if hasattr(self.foreground_estimation_obj, VMD.UPDATE_FN_NAME):
+        if issubclass(type(self.foreground_estimation_obj), Updatable):
             self.foreground_estimation_obj.update(**foreground_estimator.get('foreground_estimator_params', {}))
