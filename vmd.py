@@ -7,11 +7,11 @@ from VMD.detections import detectors
 from VMD.stabilization import stabilizers
 from VMD.foreground import foreground_estimators
 from SoiUtils.load import load_yaml
-from SoiUtils.interfaces import Resetable, Updatable
+from SoiUtils.interfaces import Resetable, Updatable, Localizer
 import time
 
 
-class VMD:
+class VMD(Resetable,Updatable,Localizer):
 
     def __init__(self, stabilizer, binarizer, detector, foreground_estimator) -> None:
         logging.basicConfig(level=logging.DEBUG)
@@ -71,3 +71,7 @@ class VMD:
 
         if issubclass(type(self.foreground_estimation_obj), Updatable):
             self.foreground_estimation_obj.update(**foreground_estimator.get('foreground_estimator_params', {}))
+
+    
+    def localize(self, frame):
+        return self(frame)
