@@ -111,7 +111,7 @@ class ForegroundEstimetor(Resetable, Updatable):
         self.total_time = 0
 
     def compile(self):
-        gray = np.ones((512, 640), dtype=np.uint8)
+        gray = np.ones((240, 240), dtype=np.uint8)
         self.first_pass(gray)
         self.reset()
 
