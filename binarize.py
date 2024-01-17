@@ -43,8 +43,8 @@ class DilateErodeBinarizer(Updatable):
     def update(self, diff_frame_threshold: int, dilate_kernel_size, erode_kernel_size,
                  dilate_kwargs: dict, erode_kwargs: dict, **kwargs):
         self.diff_frame_threshold = diff_frame_threshold
-        self.dilate_kernel = np.ones(dilate_kernel_size)
-        self.erode_kernel = np.ones(erode_kernel_size)
+        self.dilate_kernel = np.ones(dilate_kernel_size) if dilate_kernel_size is not None else None
+        self.erode_kernel = np.ones(erode_kernel_size) if erode_kernel_size is not None else None
         self.dilate_kwargs = dilate_kwargs if dilate_kwargs is not None else {}
         self.erode_kwargs = erode_kwargs if erode_kwargs is not None else {}
 
