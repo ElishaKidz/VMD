@@ -23,18 +23,21 @@ def gammaCorrection(src, gamma):
 
 @register("DilateErodeBinarizer")
 class DilateErodeBinarizer(Updatable):
-    def __init__(self, diff_frame_threshold: int = 30, dilate_kernel_size=(15, 15), erode_kernel_size=(2, 2),
+    def __init__(self, diff_frame_threshold: int = 30, dilate_kernel_size=None, erode_kernel_size=None,
                  dilate_kwargs: dict = None, erode_kwargs: dict = None) -> None:
         self.diff_frame_threshold = diff_frame_threshold
-        self.dilate_kernel = np.ones(dilate_kernel_size)
-        self.erode_kernel = np.ones(erode_kernel_size)
+        self.dilate_kernel = np.ones(dilate_kernel_size) if dilate_kernel_size is not None else None
+        self.erode_kernel = np.ones(erode_kernel_size) if erode_kernel_size is not None else None
         self.dilate_kwargs = dilate_kwargs if dilate_kwargs is not None else {}
         self.erode_kwargs = erode_kwargs if erode_kwargs is not None else {}
         
     def __call__(self, gray_frame):
         thresh_frame = cv.threshold(src=gray_frame, thresh=self.diff_frame_threshold, maxval=255, type=cv.THRESH_BINARY)[1]
-        thresh_frame = cv.erode(thresh_frame, self.erode_kernel, **self.erode_kwargs)
-        thresh_frame = cv.dilate(thresh_frame, self.dilate_kernel, **self.dilate_kwargs)
+        if self.erode_kernel is not None:
+            thresh_frame = cv.erode(thresh_frame, self.erode_kernel, **self.erode_kwargs)
+        if self.dilate_kernel is not None:
+            thresh_frame = cv.dilate(thresh_frame, self.dilate_kernel, **self.dilate_kwargs)
+        
         return thresh_frame
 
     def update(self, diff_frame_threshold: int, dilate_kernel_size, erode_kernel_size,
