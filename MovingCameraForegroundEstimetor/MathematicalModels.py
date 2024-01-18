@@ -395,7 +395,7 @@ class StatisticalModel(BaseModel):
         else:
             out = utils_numba.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
         if self.suppress:
-            out = utils_numba.suppression(gray, out, self.theta_d)
+            out = utils_numba.suppression(gray, out, self.theta_d, big_mean, big_vars)
         return out
 
     def get_foreground(self, gray, com_means, com_vars, com_ages):

@@ -330,11 +330,25 @@ def calc_probability(gray, det, temporal_property, spatial_property):
 
 
 @jit(nopython=True, parallel=True)
-def suppression(gray, out, theta_d):
+def suppression(gray, out, theta_d, big_mean, big_var):
+    sqrt_theta_d = np.sqrt(theta_d)
+    big_std = np.sqrt(big_var)
+    threshold = big_mean + sqrt_theta_d * big_std
+
+    rows, cols = gray.shape
+    for i in prange(rows):
+        for j in prange(cols):
+            if gray[i, j] < threshold[i, j]:
+                out[i, j] = 0
+    return out
+
+
+# this function is the old suppression and currently not used
+@jit(nopython=True, parallel=True)
+def suppression_by_image(gray, out, theta_d):
+    sqrt_theta_d = np.sqrt(theta_d)
     mn = np.mean(gray)
     std = np.std(gray)
-
-    sqrt_theta_d = np.sqrt(theta_d)
     threshold = mn + sqrt_theta_d * std
 
     rows, cols = gray.shape
