@@ -161,15 +161,15 @@ class ForegroundEstimetor(Resetable, Updatable):
         if new_w // self.block_size != self.model_width or new_h // self.block_size != self.model_height:
             self.reset()
 
+        if self.smooth:
+            # gray_frame = cv2.medianBlur(gray_frame, 5)
+            gray_frame = cv2.GaussianBlur(gray_frame, (5, 5), 0)
+
         if self.is_first:   # if first frame initialize
             x = self.first_pass(gray_frame)
             e = time.time()
             self.total_time += e - s
             return x
-
-        if self.smooth:
-            gray_frame = cv2.medianBlur(gray_frame, 5)
-            # gray_frame = cv2.GaussianBlur(gray_frame, (7, 7), 0)
 
         # compensate
         prev_means, prev_vars, prev_ages = self.statistical_models.get_models()
