@@ -342,6 +342,21 @@ def suppression(gray, out, theta_d, big_mean, big_var):
                 out[i, j] = 0
     return out
 
+# this function is the old suppresion and currently not used
+@jit(nopython=True, parallel=True)
+def suppression_by_image(gray, out, theta_d):
+    sqrt_theta_d = np.sqrt(theta_d)
+    mn = np.mean(gray)
+    std = np.std(gray)
+    threshold = mn + sqrt_theta_d * std
+
+    rows, cols = gray.shape
+    for i in prange(rows):
+        for j in prange(cols):
+            if gray[i, j] < threshold:
+                out[i, j] = 0
+    return out
+
 
 @jit(nopython=True, parallel=True)
 def rebinMax(arr: np.ndarray, factor: tuple) -> np.ndarray:
