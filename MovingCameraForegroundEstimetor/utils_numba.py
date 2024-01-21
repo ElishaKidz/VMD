@@ -332,14 +332,14 @@ def calc_probability(gray, det, temporal_property, spatial_property):
 @jit(nopython=True, parallel=True)
 def suppression(gray, out, theta_d, big_mean, big_var):
     sqrt_theta_d = np.sqrt(theta_d)
-    big_std = np.sqrt(big_var)
+    # big_std = np.sqrt(big_var)
 
     rows, cols = gray.shape
-    threshold = np.zeros(gray.shape, dtype=big_std.dtype)
+    threshold = np.zeros(gray.shape, dtype=big_var.dtype)
 
     for i in prange(rows):
         for j in prange(cols):
-            threshold[i, j] = big_mean[i, j] + sqrt_theta_d * big_std[i, j]
+            threshold[i, j] = big_mean[i, j] + sqrt_theta_d * np.sqrt(big_var[i, j])
 
     for i in prange(rows):
         for j in prange(cols):
