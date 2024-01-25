@@ -5,6 +5,7 @@ from VMD.MovingCameraForegroundEstimetor.MathematicalModels import CompensationM
 from VMD.MovingCameraForegroundEstimetor.KLTWrapper import KLTWrapper
 import cv2
 from SoiUtils.interfaces import Resetable, Updatable
+from SoiUtils.output_recorder import global_output_recorder
 
 
 class ForegroundEstimetor(Resetable, Updatable):
@@ -192,6 +193,6 @@ class ForegroundEstimetor(Resetable, Updatable):
         self.total_time += e - s
 
         return foreground
-
+    @global_output_recorder.record_output
     def __call__(self, gray_frame):
         return self.get_foreground(gray_frame)

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 binarizers = {}
 from SoiUtils.interfaces import Updatable
-
+from SoiUtils.output_recorder import global_output_recorder
 
 def register(name):
     def register_func_fn(cls):
@@ -64,7 +64,7 @@ class FrameSuppressionDilateErodeBinarizer(DilateErodeBinarizer):
         image[:, :frame_thickness] = 0  # Left frame
         image[:, -frame_thickness:] = 0  # Right frame
         return image
-
+    @global_output_recorder.record_output
     def __call__(self, gray):
         gray = self.replace_frame_with_zeros(gray)
         return super(FrameSuppressionDilateErodeBinarizer, self).__call__(gray)
