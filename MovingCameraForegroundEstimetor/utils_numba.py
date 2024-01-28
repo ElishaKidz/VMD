@@ -347,6 +347,10 @@ def suppression_by_image(gray, out, theta_d):
 
 @jit(nopython=True, parallel=True)
 def suppression(gray, out, theta_d, big_mean, big_var):
+    """
+    not working on NUC only!
+    dont know why
+    """
     sqrt_theta_d = np.sqrt(theta_d)
 
     rows, cols = gray.shape

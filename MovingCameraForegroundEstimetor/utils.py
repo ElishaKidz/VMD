@@ -30,3 +30,11 @@ def project(points, H):
 
 def reshape(arr: np.ndarray, new_shape):
     return arr.reshape(*new_shape)
+
+
+def suppression(gray, out, theta_d, big_mean, big_var):
+    sqrt_theta_d = np.sqrt(theta_d)
+
+    out[gray < big_mean + sqrt_theta_d * np.sqrt(big_var)] = 0
+
+    return out
