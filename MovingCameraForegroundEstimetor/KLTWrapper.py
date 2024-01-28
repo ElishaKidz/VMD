@@ -57,9 +57,11 @@ class KLTWrapper:
         else:
             self.H = np.identity(3, dtype=np.float32)
         self.InitFeatures(image)
+
         self.imgPrevGray = image
         return self.H
 
     def makeHomoGraphy(self, p1, p2):
         self.H, status = cv2.findHomography(p1, p2, cv2.RANSAC, 1.0)
         self.H = self.H.astype(np.float32)
+    
