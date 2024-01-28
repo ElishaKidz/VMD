@@ -36,7 +36,7 @@ foreground_estimator:
     theta_v: 2500.0
     age_trim: 30
     theta_s: 2
-    theta_d: 1.5
+    theta_d: 2.5
     dynamic: False
     calc_probs: False
     sensitivity: False  # 'mixed' , True or False
