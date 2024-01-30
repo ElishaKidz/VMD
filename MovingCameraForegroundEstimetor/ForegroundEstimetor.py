@@ -5,6 +5,7 @@ from VMD.MovingCameraForegroundEstimetor.MathematicalModels import CompensationM
 from VMD.MovingCameraForegroundEstimetor.KLTWrapper import KLTWrapper
 import cv2
 from SoiUtils.interfaces import Resetable, Updatable
+from SoiUtils.output_recorder import global_output_recorder
 
 
 class ForegroundEstimetor(Resetable, Updatable):
@@ -161,15 +162,15 @@ class ForegroundEstimetor(Resetable, Updatable):
         if new_w // self.block_size != self.model_width or new_h // self.block_size != self.model_height:
             self.reset()
 
+        if self.smooth:
+            # gray_frame = cv2.medianBlur(gray_frame, 5)
+            gray_frame = cv2.GaussianBlur(gray_frame, (5, 5), 0)
+
         if self.is_first:   # if first frame initialize
             x = self.first_pass(gray_frame)
             e = time.time()
             self.total_time += e - s
             return x
-
-        if self.smooth:
-            gray_frame = cv2.medianBlur(gray_frame, 5)
-            # gray_frame = cv2.GaussianBlur(gray_frame, (7, 7), 0)
 
         # compensate
         prev_means, prev_vars, prev_ages = self.statistical_models.get_models()
@@ -192,6 +193,6 @@ class ForegroundEstimetor(Resetable, Updatable):
         self.total_time += e - s
 
         return foreground
-
+    @global_output_recorder.record_output
     def __call__(self, gray_frame):
         return self.get_foreground(gray_frame)

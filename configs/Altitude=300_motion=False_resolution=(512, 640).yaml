@@ -8,8 +8,8 @@ binarizer:
   binarizer_name: 'FrameSuppressionDilateErodeBinarizer'
   binarizer_params:
     diff_frame_threshold: 30
-    dilate_kernel_size: [15, 15]
-    erode_kernel_size: [2, 2]
+    dilate_kernel_size: [7, 7]
+    erode_kernel_size: [3, 3]
     thickness: 5
     dilate_kwargs:
       iterations: 1
@@ -29,16 +29,16 @@ foreground_estimator:
   foreground_estimator_name: 'MovingCameraForegroundEstimetor'
   foreground_estimator_params:
     num_models: 2
-    block_size: 2
+    block_size: 3
     var_init: 400.0
     var_trim: 25.0
     lam: 0.001
     theta_v: 2500.0
     age_trim: 30
     theta_s: 2
-    theta_d: 1.5
+    theta_d: 2.5
     dynamic: False
     calc_probs: False
     sensitivity: False  # 'mixed' , True or False
-    suppress: True
+    suppress: False
     smooth: False

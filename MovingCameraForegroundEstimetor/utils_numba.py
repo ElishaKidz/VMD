@@ -360,6 +360,24 @@ def suppression_by_image(gray, out, theta_d):
 
 
 @jit(nopython=True, parallel=True)
+def suppression(gray, out, theta_d, big_mean, big_var):
+    """
+    not working on NUC only!
+    dont know why
+    """
+    sqrt_theta_d = np.sqrt(theta_d)
+
+    rows, cols = gray.shape
+
+    for i in prange(rows):
+        for j in prange(cols):
+            threshold = big_mean[i, j] + sqrt_theta_d * np.sqrt(big_var[i, j])
+            if gray[i, j] < threshold:
+                out[i, j] = 0
+    return out
+
+
+@jit(nopython=True, parallel=True)
 def rebinMax(arr: np.ndarray, factor: tuple) -> np.ndarray:
     # identicle to rebin + max
     rows, cols = arr.shape[:2]
