@@ -391,7 +391,7 @@ class StatisticalModel(BaseModel):
 
         if self.calc_probs:
             out = utils_numba.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
-            out = utils_numba.calc_probability(gray, out, self.temporal_property, self.spatial_property)
+            out = utils_numba.calc_probability(out, self.temporal_property, self.spatial_property)
         else:
             out = utils_numba.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
         if self.suppress:
