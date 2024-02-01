@@ -5,7 +5,7 @@ stabilizer:
 
 
 binarizer:
-  binarizer_name: 'FrameSuppressionDilateErodeBinarizer'
+  binarizer_name: 'NormalizedDilateErodeBinarizer'
   binarizer_params:
     diff_frame_threshold: 30
     dilate_kernel_size: [15, 15]
