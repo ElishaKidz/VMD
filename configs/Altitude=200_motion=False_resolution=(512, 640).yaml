@@ -38,7 +38,7 @@ foreground_estimator:
     theta_s: 2
     theta_d: 3
     dynamic: False
-    calc_probs: False
+    calc_probs: True
     sensitivity: False  # 'mixed' , True or False
     suppress: True
     smooth: False
