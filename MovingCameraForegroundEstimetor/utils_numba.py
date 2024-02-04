@@ -316,13 +316,11 @@ def update_means(com_means, alpha, cur_mean):
 
 
 @jit(nopython=True)
-def calc_probability(det, temporal_property, spatial_property):
-    neighborhood_size = (5, 5)
+def calc_probability(det, temporal_property, spatial_property, t_alpha=0.3, s_alpha=0.3, neighborhood_size=(5, 5)):
     kernel = np.ones(neighborhood_size) / (neighborhood_size[0] * neighborhood_size[1])
-    alpha = 0.3
 
-    temporal_property = alpha * temporal_property + (1 - alpha) * det / 255
-    spatial_property = alpha * spatial_property + (1 - alpha) * \
+    temporal_property = t_alpha * temporal_property + (1 - t_alpha) * det / 255
+    spatial_property = s_alpha * spatial_property + (1 - s_alpha) * \
                        convolve2d_with_padding(det / 255, kernel)
     probs = temporal_property * spatial_property
     out = (probs * 255).astype(np.uint8)

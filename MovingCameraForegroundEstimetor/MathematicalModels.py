@@ -239,14 +239,14 @@ class StatisticalModel(BaseModel):
 
     def __init__(self, num_models, model_height, model_width, block_size, var_init, var_trim, age_trim, theta_s,
                  theta_d=4,
-                 dynamic=False, calc_probs=False, sensitivity=False, suppress=False):
+                 dynamic=False, probs_params=None, sensitivity=False, suppress=False):
         super(StatisticalModel, self).__init__(num_models, model_height, model_width, block_size, var_init, var_trim)
         self.age_trim = age_trim
         self.theta_s = theta_s
         self.theta_d = theta_d
         self.matrix_theta_d = None
         self.dynamic = dynamic
-        self.calc_probs = calc_probs
+        self.probs_params = probs_params
         self.sensitivity = sensitivity
         self.suppress = suppress
 
@@ -260,13 +260,13 @@ class StatisticalModel(BaseModel):
         self.spatial_property = np.zeros((self.model_height * self.block_size, self.model_width * self.block_size),
                                          dtype=np.float32)
 
-    def update(self, var_init, var_trim, age_trim, theta_s, theta_d, dynamic, calc_probs, sensitivity, suppress):
+    def update(self, var_init, var_trim, age_trim, theta_s, theta_d, dynamic, probs_params, sensitivity, suppress):
         super(StatisticalModel, self).update(var_init, var_trim)
         self.age_trim = age_trim
         self.theta_s = theta_s
         self.theta_d = theta_d
         self.dynamic = dynamic
-        self.calc_probs = calc_probs
+        self.probs_params = probs_params
         self.sensitivity = sensitivity
         self.suppress = suppress
 
@@ -389,11 +389,9 @@ class StatisticalModel(BaseModel):
         big_ages = utils_numba.enlarge_pixels(self.ages[0], self.block_size)  # same for ages
         big_vars = utils_numba.enlarge_pixels(self.vars[0], self.block_size)  # same for vars
 
-        if self.calc_probs:
-            out = utils_numba.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
-            out = utils_numba.calc_probability(out, self.temporal_property, self.spatial_property)
-        else:
-            out = utils_numba.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
+        out = utils_numba.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
+        if self.probs_params is not None:
+            out = utils_numba.calc_probability(out, self.temporal_property, self.spatial_property, **self.probs_params)
         if self.suppress:
             out = utils.suppression(gray, out, self.theta_d, big_mean, big_vars)
         return out

@@ -15,7 +15,7 @@ class ForegroundEstimetor(Resetable, Updatable):
     """
     def __init__(self, num_models: int = 2, block_size: int = 4, var_init: float = 20.0*20.0, var_trim: float = 5.0*5.0,
                  lam: float = 0.001, theta_v: float = 50.0*50.0, age_trim: float = 30, theta_s=2, theta_d=2,
-                 dynamic=False, calc_probs=False, sensitivity="mixed", suppress=False, smooth=True):
+                 dynamic=False, probs_params=None, sensitivity="mixed", suppress=False, smooth=True):
         """
         :param num_models: number of models for each pixel to use, minimum possible value is 2
         :param block_size: the size of a square block in the grid the image dims most be able to divide by this param
@@ -55,7 +55,7 @@ class ForegroundEstimetor(Resetable, Updatable):
         self.dynamic = dynamic
         self.suppress = suppress
 
-        self.calc_probs = calc_probs
+        self.probs_params = calc_probs
         self.sensitivity = sensitivity
         self.smooth = smooth
 
@@ -68,8 +68,8 @@ class ForegroundEstimetor(Resetable, Updatable):
         self.compile()
 
     def update(self, num_models: int, block_size: int, var_init: float, var_trim: float,
-                 lam: float, theta_v: float, age_trim: float, theta_s, theta_d,
-                 dynamic, calc_probs, sensitivity, suppress, smooth, **kwargs):
+               lam: float, theta_v: float, age_trim: float, theta_s, theta_d,
+               dynamic, probs_params, sensitivity, suppress, smooth, **kwargs):
         self.var_init = var_init
         self.var_trim = var_trim
         self.lam = lam
@@ -80,7 +80,7 @@ class ForegroundEstimetor(Resetable, Updatable):
         self.dynamic = dynamic
         self.suppress = suppress
 
-        self.calc_probs = calc_probs
+        self.probs_params = probs_params
         self.sensitivity = sensitivity
         self.smooth = smooth
 
@@ -93,7 +93,7 @@ class ForegroundEstimetor(Resetable, Updatable):
             self.compensation_models.update(var_init, var_trim, lam, theta_v)
 
         if self.statistical_models is not None:
-            self.statistical_models.update(var_init, var_trim, age_trim, theta_s, theta_d, dynamic, calc_probs,
+            self.statistical_models.update(var_init, var_trim, age_trim, theta_s, theta_d, dynamic, probs_params,
                                            sensitivity, suppress)
 
     def reset(self):
@@ -135,7 +135,7 @@ class ForegroundEstimetor(Resetable, Updatable):
                                                          self.theta_v)
             self.statistical_models = StatisticalModel(self.num_models, self.model_height, self.model_width,
                                                        self.block_size, self.var_init, self.var_trim, self.age_trim,
-                                                       self.theta_s, self.theta_d, self.dynamic, self.calc_probs,
+                                                       self.theta_s, self.theta_d, self.dynamic, self.probs_params,
                                                        self.sensitivity, self.suppress)
 
         # initialize homography calculator
