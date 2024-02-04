@@ -20,10 +20,10 @@ def register(name):
 @register("MovingCameraForegroundEstimetor")
 class MovingCameraForegroundEstimetor(ForegroundEstimetor):
     def __init__(self, num_models=2, block_size=4, var_init=20.0 * 20.0, var_trim=5.0 * 5.0, lam=0.001,
-                 theta_v=50.0 * 50.0, age_trim=30, theta_s=2, theta_d=2, dynamic=False, calc_probs=False,
+                 theta_v=50.0 * 50.0, age_trim=30, theta_s=2, theta_d=2, dynamic=False, probs_params=None,
                  sensitivity="mixed", suppress=False, smooth=True):
         super(MovingCameraForegroundEstimetor, self).__init__(num_models, block_size, var_init, var_trim, lam, theta_v,
-                                                              age_trim, theta_s, theta_d, dynamic, calc_probs,
+                                                              age_trim, theta_s, theta_d, dynamic, probs_params,
                                                               sensitivity, suppress, smooth)
 
 

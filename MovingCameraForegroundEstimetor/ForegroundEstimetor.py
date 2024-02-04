@@ -55,7 +55,7 @@ class ForegroundEstimetor(Resetable, Updatable):
         self.dynamic = dynamic
         self.suppress = suppress
 
-        self.probs_params = calc_probs
+        self.probs_params = probs_params
         self.sensitivity = sensitivity
         self.smooth = smooth
 
