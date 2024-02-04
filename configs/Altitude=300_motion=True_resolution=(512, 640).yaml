@@ -42,6 +42,6 @@ foreground_estimator:
     suppress: False
     smooth: False
     probs_params:
-      t_alpha: 0.3
-      s_alpha: 0.3
+      t_alpha: 0.5
+      s_alpha: 0.5
       neighborhood_size: [ 5, 5 ]
