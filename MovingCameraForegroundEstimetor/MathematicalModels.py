@@ -392,7 +392,7 @@ class StatisticalModel(BaseModel):
         out = utils_numba.calc_by_thresh(gray, big_mean, big_vars, big_ages, self.theta_d)
         if self.probs_params is not None:
             self.probs_params["neighborhood_size"] = tuple(self.probs_params["neighborhood_size"])  # TODO:otherwise have problems with numba, make more beautiful
-            out = utils_numba.calc_probability(out, self.temporal_property, self.spatial_property, **self.probs_params)
+            out, self.temporal_property, self.spatial_property = utils_numba.calc_probability(out, self.temporal_property, self.spatial_property, **self.probs_params)
         if self.suppress:
             out = utils.suppression(gray, out, self.theta_d, big_mean, big_vars)
         return out

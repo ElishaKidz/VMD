@@ -323,8 +323,8 @@ def calc_probability(det, temporal_property, spatial_property, t_alpha=0.3, s_al
     spatial_property = s_alpha * spatial_property + (1 - s_alpha) * \
                        convolve2d_with_padding(det / 255, kernel)
     probs = temporal_property * spatial_property
-    out = (probs * 255).astype(np.uint8)
-    return out
+    # out = (probs * 255).astype(np.uint8)
+    return (probs * det).astype(np.uint8), temporal_property, spatial_property # (probs * det).astype(np.uint8)
 
 
 @jit(nopython=True, parallel=True)
