@@ -254,4 +254,4 @@ class MGDForegroundEstimation():
                     corrected_D[col,row] = 0
         
         corrected_D[corrected_D>second_threshold] = 255
-        return corrected_D
+        return corrected_D.astype(np.uint8)

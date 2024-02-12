@@ -1,0 +1,30 @@
+stabilizer:
+  stabilizer_name: 'NoStability'
+  stabilizer_params:
+    no_stability: ""
+
+
+binarizer:
+  binarizer_name: 'FrameSuppressionDilateErodeBinarizer'
+  binarizer_params:
+    diff_frame_threshold: 30
+    dilate_kernel_size: [15, 15]
+    erode_kernel_size: [2, 2]
+    thickness: 5
+    dilate_kwargs:
+      iterations: 1
+
+    erode_kwargs:
+      iterations: 1
+
+
+detector:
+  detector_name: 'DetectionsFromContours'
+  detector_params:
+    bbox_format: 'yolo'
+    bbox_col_names: ["xRelative","yRelative","width","height"]
+
+
+foreground_estimator:
+  foreground_estimator_name: 'MGDForegroundEstimation'
+    
