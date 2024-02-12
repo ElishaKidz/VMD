@@ -1,0 +1,45 @@
+binarizer:
+  binarizer_name: FrameSuppressionDilateErodeBinarizer
+  binarizer_params:
+    diff_frame_threshold: 30
+    dilate_kernel_size:
+    - 15
+    - 15
+    dilate_kwargs:
+      iterations: 1
+    erode_kernel_size:
+    - 2
+    - 2
+    erode_kwargs:
+      iterations: 1
+    thickness: 5
+detector:
+  detector_name: DetectionsFromContours
+  detector_params:
+    bbox_col_names:
+    - xRelative
+    - yRelative
+    - width
+    - height
+    bbox_format: yolo
+foreground_estimator:
+  foreground_estimator_name: MovingCameraForegroundEstimetor
+  foreground_estimator_params:
+    age_trim: 10
+    block_size: 2
+    calc_probs: false
+    dynamic: false
+    lam: 0.0004
+    num_models: 2
+    sensitivity: false
+    smooth: false
+    suppress: true
+    theta_d: 1
+    theta_s: 1
+    theta_v: 1000.0
+    var_init: 150.0
+    var_trim: 10.0
+stabilizer:
+  stabilizer_name: NoStability
+  stabilizer_params:
+    no_stability: ''
