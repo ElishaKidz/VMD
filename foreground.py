@@ -149,6 +149,7 @@ class MGDForegroundEstimation():
         self.ring_kernels = np.stack([self.build_ring_kernel(self._distance_kernel,i) for i in range(self.n_rings)],axis=0)
         self.backgroung_kernel = self.build_ring_kernel(self._distance_kernel, self.n_rings+1)
 
+        self.ring_kernels = self.ring_kernels[:, 1:-1, 1:-1]
         self._X_distances = self._X_distances[1:-1, 1:-1]
         self._Y_distances = self._Y_distances[1:-1, 1:-1]
     
@@ -183,6 +184,9 @@ class MGDForegroundEstimation():
         filters = torch.tensor(filters, dtype=torch.float32).unsqueeze(1) # convert into (n_filters,1,kernel_height,kernel_width)->(out_channels,in_channels,kernel_height,kernel_width)
         output = torch.nn.functional.conv2d(gray_frame, filters,**kwargs).squeeze(0)
         return output.numpy() # return a numpy array as output
+
+
+
     
     def calculate_sigma(self, mu_matrices, B):
         P_r = (np.subtract(mu_matrices[1:], B))/(mu_matrices[0] - B) # p(r)-B/p(0)/B, 1<=r<=n_rings
@@ -242,7 +246,6 @@ class MGDForegroundEstimation():
             sigma = self.calculate_sigma(mu_matrices[:, col, row], B[0, col, row])
             if sigma < np.inf:
                 neighborhood = gray_frame[col-number_of_points_from_filter_center:col+number_of_points_from_filter_center+1,row-number_of_points_from_filter_center:row+number_of_points_from_filter_center+1]            
-
                 hessian_filter = self.calculate_hessian_filter(sigma)                
                 hessian_matrix = np.sum(neighborhood*hessian_filter,axis=(1,2)).reshape(2,2)
                 ev1,ev2 = self.calculate_hessian_eigenvalues(hessian_matrix)
@@ -250,8 +253,13 @@ class MGDForegroundEstimation():
                 if ev1<0 and ev2<0:
                     I = self.calculate_ratio_between_eiganvalues(ev1,ev2)
                     corrected_D[col,row] *= I
+
                 else:
                     corrected_D[col,row] = 0
+            
+            else:
+                corrected_D[col,row] = 0
+
         
         corrected_D[corrected_D>second_threshold] = 255
         return corrected_D.astype(np.uint8)
