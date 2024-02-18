@@ -136,18 +136,25 @@ def difference(background_patches, broadcasted_frame):
 @register("MGDForegroundEstimation")
 class MGDForegroundEstimation():
     def __init__(self, kernel_shape=9):
+        """
+            kernel_shape - is the square filter shpae that will later be used to create the distance and ring filters etc'
+        """
         assert kernel_shape % 2 != 0, ValueError("The kernel should be odd")
         self.kernel_shape = kernel_shape
-        self._kernel_shape_with_bg = kernel_shape + 2
-        self.n_rings = kernel_shape // 2
-        self.r = np.arange(1, self.n_rings)
+        self._kernel_shape_with_bg = kernel_shape + 2 # In order to include the background ring into the distance calculations we increase the kernel shape.
+        self.n_rings = kernel_shape // 2 # The number of rings can be directly calculated from the kernel shape
+        self.r = np.arange(1, self.n_rings) # initilalized here for later use,
 
+        # Towards the calculation of the hassien we need to compute the distance of the neighborhood from the center pixel, on x and y axis.
         distance_from_center = list(range(1,(self._kernel_shape_with_bg//2)+1))
-        self._X_distances = np.array([distance_from_center[::-1] + [0] + distance_from_center] * self._kernel_shape_with_bg)
-        self._Y_distances = self._X_distances.transpose()
-        self._distance_kernel = np.round(np.sqrt((self._X_distances)**2 + (self._Y_distances)**2))
-        self.ring_kernels = np.stack([self.build_ring_kernel(self._distance_kernel,i) for i in range(self.n_rings)],axis=0)
-        self.backgroung_kernel = self.build_ring_kernel(self._distance_kernel, self.n_rings+1)
+
+        self._X_distances = np.array([distance_from_center[::-1] + [0] + distance_from_center] * self._kernel_shape_with_bg) # [4,3,2,1,0,1,2,3,4] * self._kernel_shape_with_bg
+        self._Y_distances = self._X_distances.transpose() # [4,3,2,1,0,1,2,3,4] transpose
+        self._distance_kernel = np.round(np.sqrt((self._X_distances)**2 + (self._Y_distances)**2)) # The rings will be later constructed by the distance kernel
+        self.ring_kernels = np.stack([self.build_ring_kernel(self._distance_kernel,i) for i in range(self.n_rings)],axis=0) # refer to eq 6 in the paper 
+        self.backgroung_kernel = self.build_ring_kernel(self._distance_kernel, self.n_rings+1) # The background_ring is consturcted using the outer ring
+
+        # eliminate the irrelevant bacground elements from the kernels 
 
         self.ring_kernels = self.ring_kernels[:, 1:-1, 1:-1]
         self._X_distances = self._X_distances[1:-1, 1:-1]
@@ -157,8 +164,8 @@ class MGDForegroundEstimation():
     def build_ring_kernel(distance_kernel:np.array,requested_distance_from_center:int) -> np.array:
         """
         Create the ring convolution kernels as descrined in the article.
-        set of connected pixels of the same distance.
-        """  
+        set of connected pixels of the same distance from the distance.
+        """     
         ring = np.zeros(distance_kernel.shape)
         ring[np.where(distance_kernel == requested_distance_from_center) ] = 1
         ring /= np.sum(ring)
@@ -166,10 +173,11 @@ class MGDForegroundEstimation():
     
     @staticmethod
     def initial_difference_matrix(mu_matrices:np.array):
-        shifted_mu_matrices = np.roll(mu_matrices,-1,axis=0) # [ring1,ring2,ring3,...,] -> [ring2,ring3,...,ring1]    
-        mu_matrices[-1,:,:] = 0 # zero the last ring because its irrelevant to follwoing the substraction
-        shifted_mu_matrices[-1,:,:] = 0 # zero the first ring because its irrelevant to the follwoing substraciton
-        D = np.sum((np.maximum(mu_matrices - shifted_mu_matrices,0))**2,axis=0)
+        shifted_mu_matrices = np.roll(mu_matrices,-1,axis=0) # [ring1,ring2,ring3,...,] -> [ring2,ring3,...,ring1]
+        mu_matrices = mu_matrices[:-1,:,:] # remove the last ring because its irrelevant to follwoing the substraction
+        shifted_mu_matrices = shifted_mu_matrices[:-1,:,:] # remove the last ring because its irrelevant to follwoing the substraction    
+        
+        D = np.sum((np.maximum(mu_matrices - shifted_mu_matrices,0))**2,axis=0) # Sum the differences along the ring channel
         return D
     
     @staticmethod
@@ -189,9 +197,12 @@ class MGDForegroundEstimation():
 
     
     def calculate_sigma(self, mu_matrices, B):
+        """
+        Calculate sigma according to the paper eq(26), if the equation emits an invalid value the value transformed to np.inf 
+        """
         P_r = (np.subtract(mu_matrices[1:], B))/(mu_matrices[0] - B) # p(r)-B/p(0)/B, 1<=r<=n_rings
         sigma_r = self.r/(np.sqrt(-2*np.log(P_r))) # refer algorithm 2 in the article to understand the line
-        sigma_r[np.isnan(sigma_r)] = np.inf
+        sigma_r[np.isnan(sigma_r)] = np.inf 
         sigma_r[P_r == 0] = np.inf # if P_r equals zero it means that the ring is similar to the background and hence the corresponding sigma should be considered.
         return np.min(sigma_r,axis=0)
     
@@ -220,19 +231,22 @@ class MGDForegroundEstimation():
         ev1 = (diag_sum + sqr_root)/2
         ev2 = (diag_sum - sqr_root)/2
         return ev1, ev2
+    
+    def calculate_mu_matrix(self,gray_frame):
+        return self.convolve_with_multiple_filters(gray_frame,self.ring_kernels,padding='same')
+        
 
     def __call__(self,gray_frame):
-        mu_matrices = self.convolve_with_multiple_filters(gray_frame,self.ring_kernels,padding='same')
+        gray_frame = gray_frame.astype(np.int32)
+        mu_matrices = self.calculate_mu_matrix(gray_frame)
         B = self.convolve_with_multiple_filters(gray_frame,np.expand_dims(self.backgroung_kernel,axis=0),padding='same') # convert background_kernel into (1,kernel_height,kernel_width)
         D = self.initial_difference_matrix(mu_matrices)
 
         first_threshold, _ = cv.threshold(D.astype(np.uint16), 0.0, np.max(D), cv.THRESH_OTSU+cv.THRESH_BINARY)
-        second_threshold, _ = cv.threshold(D[D > first_threshold].astype(np.uint16), 0.0, np.max(D), cv.THRESH_OTSU+cv.THRESH_BINARY)
-        
+            
         # zero all indices that doesnt surpass the threshold
         corrected_D = D.copy()
-        corrected_D[corrected_D<=second_threshold] = 0
-
+        corrected_D[corrected_D<=first_threshold] = 0
         number_of_points_from_filter_center = self.kernel_shape//2
         # zero the boundries
         boundries_map = np.ones(corrected_D.shape)
@@ -242,8 +256,9 @@ class MGDForegroundEstimation():
         corrected_D[boundries_map==1] = 0
         
         # Check the istropy for the points that surpassed the threshold
-        for col, row in np.argwhere(corrected_D>second_threshold):
+        for col, row in np.argwhere(corrected_D>first_threshold):
             sigma = self.calculate_sigma(mu_matrices[:, col, row], B[0, col, row])
+            # if sigma is valid calculate the neighborhood and the corresponding hessian
             if sigma < np.inf:
                 neighborhood = gray_frame[col-number_of_points_from_filter_center:col+number_of_points_from_filter_center+1,row-number_of_points_from_filter_center:row+number_of_points_from_filter_center+1]            
                 hessian_filter = self.calculate_hessian_filter(sigma)                
@@ -261,5 +276,5 @@ class MGDForegroundEstimation():
                 corrected_D[col,row] = 0
 
         
-        corrected_D[corrected_D>second_threshold] = 255
+        corrected_D[corrected_D>first_threshold] = 255
         return corrected_D.astype(np.uint8)

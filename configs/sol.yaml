@@ -28,5 +28,5 @@ detector:
 foreground_estimator:
   foreground_estimator_name: 'MGDForegroundEstimation'
   foreground_estimator_params:
-    kernel_shape: 7
+    kernel_shape: 11
     
