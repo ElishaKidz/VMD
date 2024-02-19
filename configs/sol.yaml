@@ -5,15 +5,19 @@ stabilizer:
 
 
 binarizer:
-  binarizer_name: 'FrameSuppressionDilateErodeBinarizer'
-  binarizer_params:
-    diff_frame_threshold: 30
+  binarizer_name: 'SimpleThresholdBinarizer'
+
+
+
+morphology:
+  morphology_name: 'FrameSuppressionDilateErodeMorphology'
+  morphology_params:
     dilate_kernel_size: [10, 10]
     erode_kernel_size:
     thickness: 5
     dilate_kwargs:
       iterations: 1
-
+    
     erode_kwargs:
       iterations: 1
 
@@ -28,5 +32,5 @@ detector:
 foreground_estimator:
   foreground_estimator_name: 'MGDForegroundEstimation'
   foreground_estimator_params:
-    kernel_shape: 11
+    kernel_shape: 9
     
