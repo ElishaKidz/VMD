@@ -5,18 +5,21 @@ stabilizer:
 
 
 binarizer:
-  binarizer_name: 'FrameSuppressionDilateErodeBinarizer'
-  binarizer_params:
-    diff_frame_threshold: 30
+  binarizer_name: 'SimpleThresholdBinarizer'
+
+
+
+morphology:
+  morphology_name: 'FrameSuppressionDilateErodeMorphology'
+  morphology_params:
     dilate_kernel_size: [7, 7]
     erode_kernel_size: [3, 3]
     thickness: 5
     dilate_kwargs:
       iterations: 1
-
+    
     erode_kwargs:
       iterations: 1
-
 
 detector:
   detector_name: 'DetectionsFromContours'
