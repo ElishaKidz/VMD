@@ -1,0 +1,47 @@
+stabilizer:
+  stabilizer_name: 'NoStability'
+  stabilizer_params:
+    no_stability: ""
+
+
+binarizer:
+  binarizer_name: 'SimpleThresholdBinarizer'
+
+
+
+morphology:
+  morphology_name: 'FrameSuppressionDilateErodeMorphology'
+  morphology_params:
+    dilate_kernel_size: [15, 15]
+    erode_kernel_size: [2, 2]
+    thickness: 5
+    dilate_kwargs:
+      iterations: 1
+    
+    erode_kwargs:
+      iterations: 1
+
+detector:
+  detector_name: 'DetectionsFromContours'
+  detector_params:
+    bbox_format: 'yolo'
+    bbox_col_names: ["xRelative","yRelative","width","height"]
+
+
+foreground_estimator:
+  foreground_estimator_name: 'MovingCameraForegroundEstimetor'
+  foreground_estimator_params:
+    num_models: 2
+    block_size: 2
+    var_init: 400.0
+    var_trim: 25.0
+    lam: 0.001
+    theta_v: 2500.0
+    age_trim: 30
+    theta_s: 2
+    theta_d: 4
+    dynamic: False
+    calc_probs: False
+    sensitivity: False  # 'mixed' , True or False
+    suppress: False
+    smooth: False
