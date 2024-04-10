@@ -5,7 +5,6 @@ from VMD.MovingCameraForegroundEstimetor.ForegroundEstimetor import ForegroundEs
 from time import time
 from numba import jit, prange
 from collections import deque
-
 foreground_estimators = {}
 
 

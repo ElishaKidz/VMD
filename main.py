@@ -21,7 +21,7 @@ def main(vmd_obj, video_cap, save_detections_file=None, rendered_video_file_path
         frame_bboxes = frame_bboxes.assign(frame_num=frame_num)
         records.append(frame_bboxes)
 
-    video_bboxes_df = pd.concat(records).astype('int32')
+    video_bboxes_df = pd.concat(records).astype('float32')
 
     if save_detections_file is not None:
         video_bboxes_df.to_csv(save_detections_file)
@@ -33,8 +33,6 @@ def main(vmd_obj, video_cap, save_detections_file=None, rendered_video_file_path
         draw_video_from_bool_csv(video_cap, video_bboxes_df, bbox_cols_names=bbox_col_names,
                                  output_video_path=rendered_video_file_path, bbox_foramt=bbox_foramt,
                                  frame_limit=frame_limit)
-
-    print(vmd_obj.foreground_estimation_obj.total_time/vmd_obj.foreground_estimation_obj.num_frames)
 
 
 if __name__ == '__main__':
