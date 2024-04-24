@@ -67,7 +67,7 @@ class VMD(Resetable,Updatable,Localizer):
         if issubclass(type(self.morphology_obj), Resetable):
             self.morphology_obj.reset()
 
-    def update(self, stabilizer, binarizer, detector, foreground_estimator,morphology):
+    def update(self, stabilizer, binarizer, detector, foreground_estimator, morphology, convert_to_gray):
         self.time = 0
         if issubclass(type(self.video_stabilization_obj), Updatable):
             self.video_stabilization_obj.update(**stabilizer.get('stabilizer_params', {}))
@@ -83,6 +83,8 @@ class VMD(Resetable,Updatable,Localizer):
 
         if issubclass(type(self.morphology_obj), Updatable):
             self.morphology_obj.update(**morphology.get('morphology_params', {}))
+
+        self.convert_to_gray = convert_to_gray
             
     
     def localize(self, frame):
