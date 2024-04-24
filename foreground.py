@@ -1,10 +1,12 @@
 import numpy as np
 import cv2 as cv
+import torch
 from skimage.util import view_as_windows
 from VMD.MovingCameraForegroundEstimetor.ForegroundEstimetor import ForegroundEstimetor
 from time import time
 from numba import jit, prange
 from collections import deque
+from VMD.lowbb import unet_model, unet_parts
 foreground_estimators = {}
 
 
@@ -49,6 +51,34 @@ class MedianForegroundEstimation:
     def reset(self):
         self.frames_history = []
 
+
+@register("lowbb")
+class Lowbb():
+    def __init__(self, model_path, height, width, device="cpu", ultrasmallnet=False, **kwargs):
+        self.model_path = model_path
+        self.height = height
+        self.width = width
+        self.device = device
+        self.ultrasmallnet = ultrasmallnet
+
+        self.model = unet_model.UNet(3, 1,
+                            height=height,
+                            width=width,
+                            known_n_points=None,
+                            device=device,
+                            ultrasmall=ultrasmallnet)
+
+        checkpoint = torch.load(self.model_path)
+        self.model.load_state_dict(checkpoint['model'])
+        self.model.eval()
+
+    def __call__(self, frame):
+        frame = torch.Tensor(frame).permute(2, 0, 1).unsqueeze(0)
+        frame.to(self.device)
+        with torch.no_grad():
+            est_map, _ = self.model(frame)
+        est_map = est_map.squeeze(0).numpy().astype(np.uint8)
+        return est_map * 255
 
 
 
