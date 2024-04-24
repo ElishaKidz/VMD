@@ -35,7 +35,7 @@ foreground_estimator:
     model_path: "weights/soi_checkpoint.ckpt"
     height: 512
     width: 640
-    device: "cpu"
+    device: "cuda"
     ultrasmallnet: False
 
 

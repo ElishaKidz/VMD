@@ -70,14 +70,15 @@ class Lowbb():
 
         checkpoint = torch.load(self.model_path)
         self.model.load_state_dict(checkpoint['model'])
+        self.model = self.model.to(torch.device(self.device))
         self.model.eval()
 
     def __call__(self, frame):
         frame = torch.Tensor(frame).permute(2, 0, 1).unsqueeze(0)
-        frame.to(self.device)
+        frame = frame.to(torch.device(self.device))
         with torch.no_grad():
             est_map, _ = self.model(frame)
-        est_map = est_map.squeeze(0).numpy().astype(np.uint8)
+        est_map = est_map.squeeze(0).cpu().numpy().astype(np.uint8)
         return est_map * 255
 
 
