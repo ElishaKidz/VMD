@@ -440,3 +440,4 @@ def calc_by_thresh(gray, big_means, big_vars, big_ages, theta):
             else:
                 out[i, j] = 0
     return out
+
