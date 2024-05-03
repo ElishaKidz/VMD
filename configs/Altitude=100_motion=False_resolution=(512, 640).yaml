@@ -33,7 +33,7 @@ foreground_estimator:
   foreground_estimator_name: 'MovingCameraForegroundEstimetor'
   foreground_estimator_params:
     num_models: 2
-    block_size: 2
+    block_size: 3
     var_init: 400.0
     var_trim: 25.0
     lam: 0.001
