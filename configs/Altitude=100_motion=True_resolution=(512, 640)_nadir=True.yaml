@@ -43,5 +43,5 @@ foreground_estimator:
     dynamic: False
     calc_probs: False
     sensitivity: False  # 'mixed' , True or False
-    suppress: True
+    suppress: False
     smooth: False
